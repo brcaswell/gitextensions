@@ -36,6 +36,7 @@
             this.ChangeLog.Dock = System.Windows.Forms.DockStyle.Fill;
             this.ChangeLog.Location = new System.Drawing.Point(0, 0);
             this.ChangeLog.Name = "ChangeLog";
+            this.ChangeLog.ReadOnly = true;
             this.ChangeLog.Size = new System.Drawing.Size(849, 411);
             this.ChangeLog.TabIndex = 0;
             this.ChangeLog.Text = "";
@@ -50,7 +51,6 @@
             this.Name = "FormChangeLog";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Change log";
-            this.Load += new System.EventHandler(this.FormChangeLog1Load);
             this.ResumeLayout(false);
 
         }

@@ -1,37 +1,28 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Linq;
 using System.Windows.Forms;
 using GitCommands;
+using GitUI.Script;
 using ResourceManager;
 
 namespace GitUI.CommandsDialogs
 {
     public partial class FormCheckoutRevision : GitModuleForm
     {
-        private readonly TranslationString _noRevisionSelectedMsgBox =
-            new TranslationString("Select 1 revision to checkout.");
-        private readonly TranslationString _noRevisionSelectedMsgBoxCaption =
-            new TranslationString("Checkout");
+        private readonly TranslationString _noRevisionSelectedMsgBox = new TranslationString("Select 1 revision to checkout.");
+        private readonly TranslationString _noRevisionSelectedMsgBoxCaption = new TranslationString("Checkout");
 
-        /// <summary>
-        /// For VS designer
-        /// </summary>
+        [Obsolete("For VS designer and translation test only. Do not remove.")]
         private FormCheckoutRevision()
-            : this(null)
-        {
-        }
-
-        public FormCheckoutRevision(GitUICommands aCommands)
-            : base(true, aCommands)
         {
             InitializeComponent();
-            Translate();
         }
 
-        private void FormCheckoutLoad(object sender, EventArgs e)
+        public FormCheckoutRevision(GitUICommands commands)
+            : base(commands)
         {
-
+            InitializeComponent();
+            InitializeComplete();
         }
 
         public void SetRevision(string commitHash)
@@ -43,22 +34,32 @@ namespace GitUI.CommandsDialogs
         {
             try
             {
-                var commitHash = commitPickerSmallControl1.SelectedCommitHash;
+                var selectedObjectId = commitPickerSmallControl1.SelectedObjectId;
 
-                if (commitHash.IsNullOrEmpty())
+                if (selectedObjectId == null)
                 {
                     MessageBox.Show(this, _noRevisionSelectedMsgBox.Text, _noRevisionSelectedMsgBoxCaption.Text);
                     return;
                 }
 
-                string command = GitCommandHelpers.CheckoutCmd(commitHash, Force.Checked ? LocalChangesAction.Reset : 0);
+                var checkedOutObjectId = Module.GetCurrentCheckout();
 
-                FormProcess.ShowDialog(this, command);
+                Debug.Assert(checkedOutObjectId != null, "checkedOutObjectId != null");
 
-                UICommands.UpdateSubmodules(this);
+                ScriptManager.RunEventScripts(this, ScriptEvent.BeforeCheckout);
 
-                DialogResult = System.Windows.Forms.DialogResult.OK;
+                string command = GitCommandHelpers.CheckoutCmd(selectedObjectId.ToString(), Force.Checked ? LocalChangesAction.Reset : 0);
+                if (FormProcess.ShowDialog(this, command))
+                {
+                    if (selectedObjectId != checkedOutObjectId)
+                    {
+                        UICommands.UpdateSubmodules(this);
+                    }
+                }
 
+                ScriptManager.RunEventScripts(this, ScriptEvent.AfterCheckout);
+
+                DialogResult = DialogResult.OK;
                 Close();
             }
             catch (Exception ex)

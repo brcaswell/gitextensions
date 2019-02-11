@@ -43,20 +43,20 @@ namespace GitUI.CommandsDialogs
             set
             {
                 _diffSelectedRevision = value;
-                //commitSummaryUserControl2.Revision = _diffSelectedRevision;
+                ////commitSummaryUserControl2.Revision = _diffSelectedRevision;
                 if (_diffSelectedRevision == null)
                 {
                     const string defaultString = "...";
-                    labelDateCaption.Text = String.Format("{0}:", Strings.GetCommitDateText());
+                    labelDateCaption.Text = $"{Strings.CommitDate}:";
                     labelAuthor.Text = defaultString;
                     gbDiffRevision.Text = defaultString;
                     labelMessage.Text = defaultString;
                 }
                 else
                 {
-                    labelDateCaption.Text = String.Format("{0}: {1}", Strings.GetCommitDateText(), _diffSelectedRevision.CommitDate);
+                    labelDateCaption.Text = $"{Strings.CommitDate}: {_diffSelectedRevision.CommitDate}";
                     labelAuthor.Text = _diffSelectedRevision.Author;
-                    gbDiffRevision.Text = _diffSelectedRevision.Guid.Substring(0, 10);
+                    gbDiffRevision.Text = _diffSelectedRevision.ObjectId.ToShortString();
                     labelMessage.Text = _diffSelectedRevision.Subject;
                 }
             }
@@ -88,19 +88,20 @@ namespace GitUI.CommandsDialogs
             Tar
         }
 
-        /// <summary>
-        /// For VS designer
-        /// </summary>
+        [Obsolete("For VS designer and translation test only. Do not remove.")]
         private FormArchive()
-            : this(null)
-        {
-        }
-
-        public FormArchive(GitUICommands aCommands)
-            : base(true, aCommands)
         {
             InitializeComponent();
-            Translate();
+        }
+
+        public FormArchive(GitUICommands commands)
+            : base(commands)
+        {
+            InitializeComponent();
+            InitializeComplete();
+
+            labelAuthor.Font = new System.Drawing.Font(labelAuthor.Font, System.Drawing.FontStyle.Bold);
+            labelMessage.Font = new System.Drawing.Font(labelMessage.Font, System.Drawing.FontStyle.Bold);
         }
 
         private void FormArchive_Load(object sender, EventArgs e)
@@ -112,7 +113,7 @@ namespace GitUI.CommandsDialogs
 
         private void Save_Click(object sender, EventArgs e)
         {
-            if (checkboxRevisionFilter.Checked && this.DiffSelectedRevision == null)
+            if (checkboxRevisionFilter.Checked && DiffSelectedRevision == null)
             {
                 MessageBox.Show(this, _noRevisionSelected.Text, _noRevisionSelectedCaption.Text, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                 return;
@@ -126,6 +127,10 @@ namespace GitUI.CommandsDialogs
             // TODO (feature): if there is a tag on the revision use the tag name as suggestion
             // TODO (feature): let user decide via GUI
             string filenameSuggestion = string.Format("{0}_{1}", new DirectoryInfo(Module.WorkingDir).Name, revision);
+            if (checkBoxPathFilter.Checked && textBoxPaths.Lines.Length == 1 && !string.IsNullOrWhiteSpace(textBoxPaths.Lines[0]))
+            {
+                filenameSuggestion += "_" + textBoxPaths.Lines[0].Trim().Replace(".", "_");
+            }
 
             using (var saveFileDialog = new SaveFileDialog
             {
@@ -150,19 +155,19 @@ namespace GitUI.CommandsDialogs
         {
             if (checkBoxPathFilter.Checked)
             {
-                // 1. get all lines from text box which are not empty
-                // 2. wrap lines with ""
+                // 1. get all lines (paths) from text box
+                // 2. wrap lines that are not empty with ""
                 // 3. join together with space as separator
-                return string.Join(" ", textBoxPaths.Lines.Where(a => !a.IsNullOrEmpty()).Select(a => string.Format("\"{0}\"", a)));
+                return string.Join(" ", textBoxPaths.Lines.Select(a => a.QuoteNE()));
             }
             else if (checkboxRevisionFilter.Checked)
             {
+                // 1. get all changed (and not deleted files) from selected to current revision
+                var files = UICommands.Module.GetDiffFiles(DiffSelectedRevision.Guid, SelectedRevision.Guid, SelectedRevision.ParentIds.FirstOrDefault()?.ToString()).Where(f => !f.IsDeleted);
 
-                // 1. get all files changed between current revision and selected revision from diff
-                var files = UICommands.Module.GetDiffFiles(this.SelectedRevision.Guid, this.DiffSelectedRevision.Guid);
-                // 2. wrap names with ""
+                // 2. wrap file names with ""
                 // 3. join together with space as separator
-                return string.Join(" ", files.Where(f => !f.IsDeleted).Select(f => string.Format("\"{0}\"", f.Name)));
+                return string.Join(" ", files.Select(f => f.Name.QuoteNE()));
             }
             else
             {
@@ -190,12 +195,14 @@ namespace GitUI.CommandsDialogs
         {
             textBoxPaths.Enabled = checkBoxPathFilter.Checked;
             if (checkBoxPathFilter.Checked)
+            {
                 checkboxRevisionFilter.Checked = false;
+            }
         }
 
         private void btnDiffChooseRevision_Click(object sender, EventArgs e)
         {
-            using (var chooseForm = new FormChooseCommit(UICommands, DiffSelectedRevision != null ? DiffSelectedRevision.Guid : String.Empty))
+            using (var chooseForm = new FormChooseCommit(UICommands, DiffSelectedRevision != null ? DiffSelectedRevision.Guid : string.Empty))
             {
                 if (chooseForm.ShowDialog(this) == DialogResult.OK && chooseForm.SelectedRevision != null)
                 {
@@ -207,12 +214,14 @@ namespace GitUI.CommandsDialogs
         private void checkboxRevisionFilter_CheckedChanged(object sender, EventArgs e)
         {
             btnDiffChooseRevision.Enabled = checkboxRevisionFilter.Checked;
-            //commitSummaryUserControl2.Enabled = checkboxRevisionFilter.Checked;
-            //lblChooseDiffRevision.Enabled = checkboxRevisionFilter.Checked;
+            ////commitSummaryUserControl2.Enabled = checkboxRevisionFilter.Checked;
+            ////lblChooseDiffRevision.Enabled = checkboxRevisionFilter.Checked;
             gbDiffRevision.Enabled = checkboxRevisionFilter.Checked;
             btnDiffChooseRevision.Enabled = checkboxRevisionFilter.Checked;
             if (checkboxRevisionFilter.Checked)
+            {
                 checkBoxPathFilter.Checked = false;
+            }
         }
     }
 }

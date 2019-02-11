@@ -1,42 +1,94 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Windows.Forms;
 using GitCommands;
-using GitCommands.Repository;
+using GitCommands.UserRepositoryHistory;
+using GitExtUtils.GitUI;
+using JetBrains.Annotations;
 using ResourceManager;
 
 namespace GitUI.CommandsDialogs.BrowseDialog
 {
     public partial class FormOpenDirectory : GitExtensionsForm
     {
-        private readonly TranslationString _warningOpenFailed =
-            new TranslationString("Directory does not exist.");
+        private readonly TranslationString _warningOpenFailed = new TranslationString("Directory does not exist.");
+        private readonly TranslationString _warningOpenFailedCaption = new TranslationString("Error");
 
-        private readonly TranslationString _warningOpenFailedCaption =
-            new TranslationString("Error");
+        [CanBeNull] private GitModule _chosenModule;
 
-        private GitModule choosenModule = null;
-
-        public FormOpenDirectory()
+        public FormOpenDirectory([CanBeNull] GitModule currentModule)
         {
             InitializeComponent();
-            Translate();
+            InitializeComplete();
 
-            _NO_TRANSLATE_Directory.DataSource = Repositories.RepositoryHistory.Repositories;
-            _NO_TRANSLATE_Directory.DisplayMember = "Path";
+            ThreadHelper.JoinableTaskFactory.Run(async () =>
+            {
+                var repositoryHistory = await RepositoryHistoryManager.Locals.LoadRecentHistoryAsync();
 
-            Load.Select();
-
-            _NO_TRANSLATE_Directory.Focus();
-            _NO_TRANSLATE_Directory.Select();
+                await this.SwitchToMainThreadAsync();
+                _NO_TRANSLATE_Directory.DataSource = GetDirectories(currentModule, repositoryHistory);
+                Load.Select();
+                _NO_TRANSLATE_Directory.Focus();
+                _NO_TRANSLATE_Directory.Select();
+            });
         }
 
-        public static GitModule OpenModule(IWin32Window owner)
+        protected override void OnRuntimeLoad(EventArgs e)
         {
-            using (var open = new FormOpenDirectory())
+            base.OnRuntimeLoad(e);
+
+            // scale up for hi DPI
+            MaximumSize = DpiUtil.Scale(new Size(800, 116));
+            MinimumSize = DpiUtil.Scale(new Size(450, 116));
+        }
+
+        private static IReadOnlyList<string> GetDirectories([CanBeNull] GitModule currentModule, IEnumerable<Repository> repositoryHistory)
+        {
+            var directories = new List<string>();
+
+            if (AppSettings.DefaultCloneDestinationPath.IsNotNullOrWhitespace())
+            {
+                directories.Add(AppSettings.DefaultCloneDestinationPath.EnsureTrailingPathSeparator());
+            }
+
+            if (!string.IsNullOrWhiteSpace(currentModule?.WorkingDir))
+            {
+                var di = new DirectoryInfo(currentModule.WorkingDir);
+                if (di.Parent != null)
+                {
+                    directories.Add(di.Parent.FullName.EnsureTrailingPathSeparator());
+                }
+            }
+
+            directories.AddRange(repositoryHistory.Select(r => r.Path));
+
+            if (directories.Count == 0)
+            {
+                if (AppSettings.RecentWorkingDir.IsNotNullOrWhitespace())
+                {
+                    directories.Add(AppSettings.RecentWorkingDir.EnsureTrailingPathSeparator());
+                }
+
+                string homeDir = EnvironmentConfiguration.GetHomeDir();
+                if (homeDir.IsNotNullOrWhitespace())
+                {
+                    directories.Add(homeDir.EnsureTrailingPathSeparator());
+                }
+            }
+
+            return directories.Distinct().ToList();
+        }
+
+        [CanBeNull]
+        public static GitModule OpenModule(IWin32Window owner, [CanBeNull] GitModule currentModule)
+        {
+            using (var open = new FormOpenDirectory(currentModule))
             {
                 open.ShowDialog(owner);
-                return open.choosenModule;
+                return open._chosenModule;
             }
         }
 
@@ -45,8 +97,8 @@ namespace GitUI.CommandsDialogs.BrowseDialog
             _NO_TRANSLATE_Directory.Text = _NO_TRANSLATE_Directory.Text.Trim();
             if (Directory.Exists(_NO_TRANSLATE_Directory.Text))
             {
-                choosenModule = new GitModule(_NO_TRANSLATE_Directory.Text);
-                Repositories.AddMostRecentRepository(choosenModule.WorkingDir);
+                _chosenModule = new GitModule(_NO_TRANSLATE_Directory.Text);
+                ThreadHelper.JoinableTaskFactory.Run(() => RepositoryHistoryManager.Locals.AddAsMostRecentAsync(_chosenModule.WorkingDir));
                 Close();
             }
             else
@@ -60,6 +112,41 @@ namespace GitUI.CommandsDialogs.BrowseDialog
             if (e.KeyChar == (char)Keys.Enter)
             {
                 LoadClick(null, null);
+            }
+        }
+
+        private void folderGoUpButton_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                var currentDirectory = new DirectoryInfo(_NO_TRANSLATE_Directory.Text);
+                if (currentDirectory.Parent == null)
+                {
+                    return;
+                }
+
+                string parentPath = currentDirectory.Parent.FullName.TrimEnd('\\');
+                _NO_TRANSLATE_Directory.Text = parentPath;
+                _NO_TRANSLATE_Directory.Focus();
+                _NO_TRANSLATE_Directory.Select(_NO_TRANSLATE_Directory.Text.Length, 0);
+                SendKeys.Send(@"\");
+            }
+            catch
+            {
+                // no-op
+            }
+        }
+
+        private void _NO_TRANSLATE_Directory_TextChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                var currentDirectory = new DirectoryInfo(_NO_TRANSLATE_Directory.Text);
+                folderGoUpButton.Enabled = currentDirectory.Exists && currentDirectory.Parent != null;
+            }
+            catch
+            {
+                folderGoUpButton.Enabled = false;
             }
         }
     }

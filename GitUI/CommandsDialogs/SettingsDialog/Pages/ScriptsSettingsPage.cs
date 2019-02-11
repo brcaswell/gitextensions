@@ -1,10 +1,13 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Utils;
+using GitExtUtils.GitUI;
 using GitUI.Script;
+using JetBrains.Annotations;
 using ResourceManager;
 
 namespace GitUI.CommandsDialogs.SettingsDialog.Pages
@@ -12,9 +15,14 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
     public partial class ScriptsSettingsPage : SettingsPageWithHeader
     {
         #region translation
+
         private readonly TranslationString _scriptSettingsPageHelpDisplayArgumentsHelp = new TranslationString("Arguments help");
-        private readonly TranslationString _scriptSettingsPageHelpDisplayContent = new TranslationString(@"User Input:
+        private readonly TranslationString _scriptSettingsPageHelpDisplayContent = new TranslationString(@"Use {option} for normal replacement.
+Use {{option}} for quoted replacement.
+
+User Input:
 {UserInput}
+{UserFiles}
 
 Working Dir:
 {WorkingDir}
@@ -51,57 +59,60 @@ Current Branch:
 {cDefaultRemote}
 {cDefaultRemoteUrl}
 {cDefaultRemotePathFromUrl}");
-        #endregion translation
 
-        private string IconName = "bug";
+        #endregion
+
+        private string _iconName = "bug";
 
         public ScriptsSettingsPage()
         {
             InitializeComponent();
+            HotkeyCommandIdentifier.Width = DpiUtil.Scale(39);
             Text = "Scripts";
-            Translate();
+            InitializeComplete();
+
+            HotkeyCommandIdentifier.DataPropertyName = nameof(ScriptInfo.HotkeyCommandIdentifier);
+            EnabledColumn.DataPropertyName = nameof(ScriptInfo.Enabled);
+            OnEvent.DataPropertyName = nameof(ScriptInfo.OnEvent);
+            AskConfirmation.DataPropertyName = nameof(ScriptInfo.AskConfirmation);
         }
 
-        public override bool IsInstantSavePage
-        {
-            get
-            {
-                return true;
-            }
-        }
+        public override bool IsInstantSavePage => true;
 
         public override void OnPageShown()
         {
-			if (EnvUtils.RunningOnWindows())
-			{
-				System.Resources.ResourceManager rm =
-					new System.Resources.ResourceManager("GitUI.Properties.Resources",
-								System.Reflection.Assembly.GetExecutingAssembly());
+            if (EnvUtils.RunningOnWindows())
+            {
+                System.Resources.ResourceManager rm =
+                    new System.Resources.ResourceManager("GitUI.Properties.Images",
+                                System.Reflection.Assembly.GetExecutingAssembly());
 
-				// dummy request; for some strange reason the ResourceSets are not loaded untill after the first object request... bug?
-				rm.GetObject("dummy");
+                // dummy request; for some strange reason the ResourceSets are not loaded untill after the first object request... bug?
+                rm.GetObject("dummy");
 
-				System.Resources.ResourceSet resourceSet = rm.GetResourceSet(System.Globalization.CultureInfo.CurrentUICulture, true, true);
+                System.Resources.ResourceSet resourceSet = rm.GetResourceSet(System.Globalization.CultureInfo.CurrentUICulture, true, true);
 
-				contextMenuStrip_SplitButton.Items.Clear();
+                contextMenuStrip_SplitButton.Items.Clear();
 
-				foreach (System.Collections.DictionaryEntry icon in resourceSet)
-				{
-					//add entry to toolstrip
-					if (icon.Value.GetType() == typeof(Icon))
-					{
-						//contextMenuStrip_SplitButton.Items.Add(icon.Key.ToString(), (Image)((Icon)icon.Value).ToBitmap(), SplitButtonMenuItem_Click);
-					}
-					else if (icon.Value.GetType() == typeof(Bitmap))
-					{
-						contextMenuStrip_SplitButton.Items.Add(icon.Key.ToString(), (Image)icon.Value, SplitButtonMenuItem_Click);
-					}
-					//var aa = icon.Value.GetType();
-				}
+                var iconItems = new List<ToolStripItem>();
+                foreach (System.Collections.DictionaryEntry icon in resourceSet)
+                {
+                    // add entry to toolstrip
+                    if (icon.Value is Icon)
+                    {
+                        ////contextMenuStrip_SplitButton.Items.Add(icon.Key.ToString(), (Image)((Icon)icon.Value).ToBitmap(), SplitButtonMenuItem_Click);
+                    }
+                    else if (icon.Value is Bitmap bitmap)
+                    {
+                        iconItems.Add(new ToolStripMenuItem(icon.Key.ToString(), bitmap, SplitButtonMenuItem_Click));
+                    }
+                }
 
-				resourceSet.Close();
-				rm.ReleaseAllResources();
-			}
+                contextMenuStrip_SplitButton.Items.AddRange(iconItems.OrderBy(i => i.Text).ToArray());
+
+                resourceSet.Close();
+                rm.ReleaseAllResources();
+            }
         }
 
         protected override void SettingsToPage()
@@ -115,9 +126,9 @@ Current Branch:
             SaveScripts();
         }
 
-        private void SaveScripts()
+        private static void SaveScripts()
         {
-            AppSettings.ownScripts = ScriptManager.SerializeIntoXml();
+            AppSettings.OwnScripts = ScriptManager.SerializeIntoXml();
         }
 
         private void LoadScripts()
@@ -136,24 +147,27 @@ Current Branch:
         private void RefreshScriptDetails()
         {
             if (ScriptList.SelectedRows.Count == 0)
+            {
                 return;
+            }
 
-            ScriptInfo scriptInfo = ScriptList.SelectedRows[0].DataBoundItem as ScriptInfo;
+            var scriptInfo = (ScriptInfo)ScriptList.SelectedRows[0].DataBoundItem;
 
             nameTextBox.Text = scriptInfo.Name;
             commandTextBox.Text = scriptInfo.Command;
             argumentsTextBox.Text = scriptInfo.Arguments;
             scriptRunInBackground.Checked = scriptInfo.RunInBackground;
+            scriptIsPowerShell.Checked = scriptInfo.IsPowerShell;
             inMenuCheckBox.Checked = scriptInfo.AddToRevisionGridContextMenu;
             scriptEnabled.Checked = scriptInfo.Enabled;
             scriptNeedsConfirmation.Checked = scriptInfo.AskConfirmation;
             scriptEvent.SelectedItem = scriptInfo.OnEvent;
             sbtn_icon.Image = ResizeForSplitButton(scriptInfo.GetIcon());
-            IconName = scriptInfo.Icon;
+            _iconName = scriptInfo.Icon;
 
             foreach (ToolStripItem item in contextMenuStrip_SplitButton.Items)
             {
-                if (item.ToString() == IconName)
+                if (item.ToString() == _iconName)
                 {
                     item.Font = new Font(item.Font, FontStyle.Bold);
                 }
@@ -163,9 +177,10 @@ Current Branch:
         private void addScriptButton_Click(object sender, EventArgs e)
         {
             ScriptList.ClearSelection();
-            ScriptManager.GetScripts().AddNew();
+            ScriptInfo script = ScriptManager.GetScripts().AddNew();
+            script.HotkeyCommandIdentifier = ScriptManager.NextHotkeyCommandIdentifier();
             ScriptList.Rows[ScriptList.RowCount - 1].Selected = true;
-            ScriptList_SelectionChanged(null, null); //needed for linux
+            ScriptList_SelectionChanged(null, null); // needed for linux
         }
 
         private void removeScriptButton_Click(object sender, EventArgs e)
@@ -182,17 +197,18 @@ Current Branch:
         {
             if (ScriptList.SelectedRows.Count > 0)
             {
-                ScriptInfo selectedScriptInfo = ScriptList.SelectedRows[0].DataBoundItem as ScriptInfo;
-                selectedScriptInfo.HotkeyCommandIdentifier = ScriptList.SelectedRows[0].Index + 9000;
+                var selectedScriptInfo = (ScriptInfo)ScriptList.SelectedRows[0].DataBoundItem;
+
                 selectedScriptInfo.Name = nameTextBox.Text;
                 selectedScriptInfo.Command = commandTextBox.Text;
                 selectedScriptInfo.Arguments = argumentsTextBox.Text;
                 selectedScriptInfo.AddToRevisionGridContextMenu = inMenuCheckBox.Checked;
                 selectedScriptInfo.Enabled = scriptEnabled.Checked;
                 selectedScriptInfo.RunInBackground = scriptRunInBackground.Checked;
+                selectedScriptInfo.IsPowerShell = scriptIsPowerShell.Checked;
                 selectedScriptInfo.AskConfirmation = scriptNeedsConfirmation.Checked;
                 selectedScriptInfo.OnEvent = (ScriptEvent)scriptEvent.SelectedItem;
-                selectedScriptInfo.Icon = IconName;
+                selectedScriptInfo.Icon = _iconName;
             }
         }
 
@@ -236,7 +252,9 @@ Current Branch:
             })
             {
                 if (ofd.ShowDialog(this) == DialogResult.OK)
+                {
                     commandTextBox.Text = ofd.FileName;
+                }
             }
         }
 
@@ -249,9 +267,14 @@ Current Branch:
                 removeScriptButton.Enabled = true;
                 moveDownButton.Enabled = moveUpButton.Enabled = false;
                 if (ScriptList.SelectedRows[0].Index > 0)
+                {
                     moveUpButton.Enabled = true;
+                }
+
                 if (ScriptList.SelectedRows[0].Index < ScriptList.RowCount - 1)
+                {
                     moveDownButton.Enabled = true;
+                }
             }
             else
             {
@@ -260,6 +283,8 @@ Current Branch:
                 moveDownButton.Enabled = false;
                 ClearScriptDetails();
             }
+
+            UpdateIconVisibility();
         }
 
         private void ScriptInfoEdit_Validating(object sender, System.ComponentModel.CancelEventArgs e)
@@ -270,25 +295,27 @@ Current Branch:
 
         private void ScriptList_CellClick(object sender, DataGridViewCellEventArgs e)
         {
-            ScriptList_SelectionChanged(null, null);//needed for linux
+            ScriptList_SelectionChanged(null, null); // needed for linux
         }
 
         private void SplitButtonMenuItem_Click(object sender, EventArgs e)
         {
-            //reset bold item to regular
+            // reset bold item to regular
             var item = contextMenuStrip_SplitButton.Items.OfType<ToolStripMenuItem>().FirstOrDefault(s => s.Font.Bold);
             if (item != null)
+            {
                 item.Font = new Font(contextMenuStrip_SplitButton.Font, FontStyle.Regular);
+            }
 
-            //make new item bold
+            // make new item bold
             ((ToolStripMenuItem)sender).Font = new Font(((ToolStripMenuItem)sender).Font, FontStyle.Bold);
 
-            //set new image on button
+            // set new image on button
             sbtn_icon.Image = ResizeForSplitButton((Bitmap)((ToolStripMenuItem)sender).Image);
 
-            IconName = ((ToolStripMenuItem)sender).Text;
+            _iconName = ((ToolStripMenuItem)sender).Text;
 
-            //store variables
+            // store variables
             ScriptInfoEdit_Validating(sender, new System.ComponentModel.CancelEventArgs());
         }
 
@@ -297,44 +324,59 @@ Current Branch:
             return ResizeBitmap(b, 12, 12);
         }
 
-        public Bitmap ResizeBitmap(Bitmap b, int nWidth, int nHeight)
+        [CanBeNull]
+        public Bitmap ResizeBitmap(Bitmap b, int width, int height)
         {
-            Bitmap result = new Bitmap(nWidth, nHeight);
-            using (Graphics g = Graphics.FromImage((Image)result))
-                g.DrawImage(b, 0, 0, nWidth, nHeight);
+            if (b == null)
+            {
+                return null;
+            }
+
+            var result = new Bitmap(width, height);
+            using (Graphics g = Graphics.FromImage(result))
+            {
+                g.DrawImage(b, 0, 0, width, height);
+            }
+
             return result;
         }
 
         private void scriptEvent_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if (scriptEvent.Text == ScriptEvent.ShowInUserMenuBar.ToString())
-            {
-                /*
-                string icon_name = IconName;
-                if (ScriptList.RowCount > 0)
-                {
-                    ScriptInfo scriptInfo = ScriptList.SelectedRows[0].DataBoundItem as ScriptInfo;
-                    icon_name = scriptInfo.Icon;
-                }*/
+            UpdateIconVisibility();
+        }
 
-                sbtn_icon.Visible = true;
-                lbl_icon.Visible = true;
-            }
-            else
-            {
-                //not a menubar item, so hide the text label and dropdown button
-                sbtn_icon.Visible = false;
-                lbl_icon.Visible = false;
-            }
+        private void UpdateIconVisibility()
+        {
+            bool showIcon = scriptEvent.Text == ScriptEvent.ShowInUserMenuBar.ToString() || inMenuCheckBox.Checked;
+
+            sbtn_icon.Visible = showIcon;
+            lbl_icon.Visible = showIcon;
         }
 
         private void buttonShowArgumentsHelp_Click(object sender, EventArgs e)
         {
-            var helpDisplayDialog = new SimpleHelpDisplayDialog();
-            helpDisplayDialog.DialogTitle = _scriptSettingsPageHelpDisplayArgumentsHelp.Text;
-            helpDisplayDialog.ContentText = @_scriptSettingsPageHelpDisplayContent.Text.Replace("\n", Environment.NewLine);
+            var helpDisplayDialog = new SimpleHelpDisplayDialog
+            {
+                DialogTitle = _scriptSettingsPageHelpDisplayArgumentsHelp.Text,
+                ContentText = _scriptSettingsPageHelpDisplayContent.Text.Replace("\n", Environment.NewLine)
+            };
 
             helpDisplayDialog.ShowDialog();
+        }
+
+        private void argumentsTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if ((e.Control && e.KeyCode == Keys.V) || (e.Shift && e.KeyCode == Keys.Insert))
+            {
+                ((RichTextBox)sender).Paste(DataFormats.GetFormat(DataFormats.UnicodeText));
+                e.Handled = true;
+            }
+        }
+
+        private void inMenuCheckBox_CheckedChanged(object sender, EventArgs e)
+        {
+            UpdateIconVisibility();
         }
     }
 }

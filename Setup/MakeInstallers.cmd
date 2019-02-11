@@ -1,22 +1,32 @@
 @echo off
-
-call DownloadExternals.cmd
-
+echo "MakeInstallers current path"
+echo %cd%
 rem
 rem Update this version number with every release
 rem
 setlocal
-set version=2.49RC1
-set numericVersion=2.48.90
+set version=3.1.0
+set numericVersion=3.1.0
+if not "%APPVEYOR_BUILD_VERSION%"=="" (
+    set version=%APPVEYOR_BUILD_VERSION%
+    set numericVersion=%APPVEYOR_BUILD_VERSION%
+)
 
-set normal=GitExtensions-%Version%-Setup.msi
-set complete=GitExtensions-%Version%-SetupComplete.msi
+SET Configuration=%1
+IF "%Configuration%"=="" SET Configuration=Release
 
-set msbuild="%windir%\Microsoft.NET\Framework\v4.0.30319\MSBuild.exe"
-set output=bin\Release\GitExtensions.msi
-set project=Setup.wixproj
+SET BuildType=%2
+IF "%BuildType%"=="" SET BuildType=Rebuild
 
-set build=%msbuild% %project% /t:Rebuild /p:Version=%version% /p:NumericVersion=%numericVersion% /p:Configuration=Release /nologo /v:m
+set normal=GitExtensions-%Version%.msi
+for /f "tokens=*" %%i in ('hMSBuild.bat -only-path -notamd64') do set msbuild="%%i"
+set output=bin\%Configuration%\GitExtensions.msi
+
+REM HACK: for some reason when we build the full solution the VSIX contains too many files, clean and rebuild the VSIX
+rmdir ..\GitExtensionsVSIX\bin\Release /s /q
+pushd ..\GitExtensionsVSIX
+%msbuild% /t:%BuildType% /p:Configuration=%Configuration% /nologo /v:m
+popd
 
 echo Creating installers for Git Extensions %version%
 echo.
@@ -24,19 +34,9 @@ echo.
 echo Removing %normal%
 del %normal% 2> nul
 
-echo Removing %complete%
-del %complete% 2> nul
-
 echo.
 
-echo Building %normal%
-%build% /p:IncludeRequiredSoftware=0
+%msbuild% Setup.wixproj /t:%BuildType% /p:Version=%version% /p:NumericVersion=%numericVersion% /p:Configuration=%Configuration% /nologo /v:m
 IF ERRORLEVEL 1 EXIT /B 1
-copy bin\Release\GitExtensions.msi %normal%
-IF ERRORLEVEL 1 EXIT /B 1
-
-echo Building %complete%
-%build% /p:IncludeRequiredSoftware=1
-IF ERRORLEVEL 1 EXIT /B 1
-copy bin\Release\GitExtensions.msi %complete%
+copy %output% %normal%
 IF ERRORLEVEL 1 EXIT /B 1

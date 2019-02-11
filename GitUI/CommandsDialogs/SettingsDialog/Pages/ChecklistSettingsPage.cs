@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Windows.Forms;
 using GitCommands;
@@ -12,12 +14,14 @@ using ResourceManager;
 
 namespace GitUI.CommandsDialogs.SettingsDialog.Pages
 {
-    /// <summary>
-    /// </summary>
     public partial class ChecklistSettingsPage : SettingsPageWithHeader
     {
+        #region Translations
         private readonly TranslationString _wrongGitVersion =
             new TranslationString("Git found but version {0} is not supported. Upgrade to version {1} or later");
+
+        private readonly TranslationString _notRecommendedGitVersion =
+            new TranslationString("Git found but version {0} is older than recommended. Upgrade to version {1} or later");
 
         private readonly TranslationString _gitVersionFound =
             new TranslationString("Git {0} is found on your computer.");
@@ -94,7 +98,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             new TranslationString("There is a custom mergetool configured: {0}");
 
         private readonly TranslationString _mergeToolXConfigured =
-            new TranslationString("There is a custom mergetool configured.");
+            new TranslationString("There is a mergetool configured: {0}");
 
         private readonly TranslationString _linuxToolsSshFound =
             new TranslationString("Linux tools (sh) found on your computer.");
@@ -115,7 +119,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             new TranslationString("There is a difftool configured: {0}");
 
         private readonly TranslationString _configureMergeTool =
-            new TranslationString("You need to configure merge tool in order to solve mergeconflicts (kdiff3 for example).");
+            new TranslationString("You need to configure merge tool in order to solve merge conflicts (kdiff3 for example).");
 
         private readonly TranslationString _kdiffAsMergeConfiguredButNotFound =
             new TranslationString("KDiff3 is configured as mergetool, but the path to kdiff.exe is not configured.");
@@ -153,7 +157,11 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
         private readonly TranslationString _shCanBeRunCaption =
             new TranslationString("Locate linux tools");
 
+        private readonly TranslationString _gcmDetectedCaption = new TranslationString("Obsolete git-credential-winstore.exe detected");
+        #endregion
+
         private const string _putty = "PuTTY";
+        private readonly ISshPathLocator _sshPathLocator = new SshPathLocator();
 
         /// <summary>
         /// TODO: remove this direct dependency to another SettingsPage later when possible
@@ -164,7 +172,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
         {
             InitializeComponent();
             Text = "Checklist";
-            Translate();
+            InitializeComplete();
         }
 
         public static SettingsPageReference GetPageReference()
@@ -172,13 +180,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             return new SettingsPageReferenceByType(typeof(ChecklistSettingsPage));
         }
 
-        public override bool IsInstantSavePage
-        {
-            get
-            {
-                return true;
-            }
-        }
+        public override bool IsInstantSavePage => true;
 
         protected override void SettingsToPage()
         {
@@ -212,7 +214,8 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             }
 
             PageHost.LoadAll();
-            Translate();
+
+            Translator.Translate(this, AppSettings.CurrentTranslation);
             SaveAndRescan_Click(null, null);
         }
 
@@ -246,7 +249,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
                 return;
             }
 
-            MessageBox.Show(this, String.Format(_shCanBeRun.Text, AppSettings.GitBinDir), _shCanBeRunCaption.Text);
+            MessageBox.Show(this, string.Format(_shCanBeRun.Text, AppSettings.GitBinDir), _shCanBeRunCaption.Text);
             ////GitBinPath.Text = Settings.GitBinDir;
             PageHost.LoadAll(); // apply settings to dialog controls (otherwise the later called SaveAndRescan_Click would overwrite settings again)
             SaveAndRescan_Click(null, null);
@@ -255,39 +258,48 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
         private void ShellExtensionsRegistered_Click(object sender, EventArgs e)
         {
             string path = Path.Combine(AppSettings.GetInstallDir(), CommonLogic.GitExtensionsShellEx32Name);
+
             if (!File.Exists(path))
             {
                 path = Assembly.GetAssembly(GetType()).Location;
                 path = Path.GetDirectoryName(path);
                 path = Path.Combine(path, CommonLogic.GitExtensionsShellEx32Name);
             }
+
             if (File.Exists(path))
             {
-                var pi = new ProcessStartInfo
+                try
                 {
-                    FileName = "regsvr32",
-                    Arguments = string.Format("\"{0}\"", path),
-                    Verb = "RunAs",
-                    UseShellExecute = true
-                };
+                    var pi = new ProcessStartInfo
+                    {
+                        FileName = "regsvr32",
+                        Arguments = path.Quote(),
+                        Verb = "RunAs",
+                        UseShellExecute = true
+                    };
 
-                var process = Process.Start(pi);
-                process.WaitForExit();
+                    var process = Process.Start(pi);
+                    process.WaitForExit();
 
-                if (IntPtr.Size == 8)
+                    if (IntPtr.Size == 8)
+                    {
+                        path = path.Replace(CommonLogic.GitExtensionsShellEx32Name, CommonLogic.GitExtensionsShellEx64Name);
+                        if (File.Exists(path))
+                        {
+                            pi.Arguments = path.Quote();
+
+                            var process64 = Process.Start(pi);
+                            process64.WaitForExit();
+                        }
+                        else
+                        {
+                            MessageBox.Show(this, string.Format(_cantRegisterShellExtension.Text, CommonLogic.GitExtensionsShellEx64Name));
+                        }
+                    }
+                }
+                catch (System.ComponentModel.Win32Exception)
                 {
-                    path = path.Replace(CommonLogic.GitExtensionsShellEx32Name, CommonLogic.GitExtensionsShellEx64Name);
-                    if (File.Exists(path))
-                    {
-                        pi.Arguments = string.Format("\"{0}\"", path);
-
-                        var process64 = Process.Start(pi);
-                        process64.WaitForExit();
-                    }
-                    else
-                    {
-                        MessageBox.Show(this, string.Format(_cantRegisterShellExtension.Text, CommonLogic.GitExtensionsShellEx64Name));
-                    }
+                    // User cancel operation, continue;
                 }
             }
             else
@@ -331,6 +343,20 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             SaveAndRescan_Click(null, null);
         }
 
+        private readonly string[] _autoConfigMergeTools =
+        {
+            "p4merge",
+            "TortoiseMerge",
+            "meld",
+            "beyondcompare3",
+            "beyondcompare4",
+            "diffmerge",
+            "semanticmerge",
+            "vscode",
+            "vsdiffmerge",
+            "winmerge"
+        };
+
         private void MergeToolFix_Click(object sender, EventArgs e)
         {
             if (string.IsNullOrEmpty(CommonLogic.GetGlobalMergeTool()))
@@ -353,7 +379,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             {
                 CheckSettingsLogic.SolveMergeToolPathForKDiff();
             }
-            else if (CommonLogic.IsMergeTool("p4merge") || CommonLogic.IsMergeTool("TortoiseMerge"))
+            else if (_autoConfigMergeTools.Any(tool => CommonLogic.IsMergeTool(tool)))
             {
                 CheckSettingsLogic.AutoConfigMergeToolCmd();
 
@@ -386,6 +412,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
         private void UserNameSet_Click(object sender, EventArgs e)
         {
             GotoPageGlobalSettings();
+
             // nice-to-have: jump directly to correct text box
         }
 
@@ -399,7 +426,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
                 return;
             }
 
-            MessageBox.Show(this, String.Format(_gitCanBeRun.Text, AppSettings.GitCommandValue), _gitCanBeRunCaption.Text);
+            MessageBox.Show(this, string.Format(_gitCanBeRun.Text, AppSettings.GitCommandValue), _gitCanBeRunCaption.Text);
 
             PageHost.GotoPage(GitSettingsPage.GetPageReference());
             SaveAndRescan_Click(null, null);
@@ -407,11 +434,12 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
 
         private void SaveAndRescan_Click(object sender, EventArgs e)
         {
-            Cursor.Current = Cursors.WaitCursor;
-            PageHost.SaveAll();
-            PageHost.LoadAll();
-            CheckSettings();
-            Cursor.Current = Cursors.Default;
+            using (WaitCursorScope.Enter())
+            {
+                PageHost.SaveAll();
+                PageHost.LoadAll();
+                CheckSettings();
+            }
         }
 
         private void CheckAtStartup_CheckedChanged(object sender, EventArgs e)
@@ -421,61 +449,90 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
 
         public bool CheckSettings()
         {
-            bool bValid = true;
-            try
-            {
-                // once a check fails, we want bValid to stay false
-                bValid = CheckGitCmdValid();
-                bValid = CheckGlobalUserSettingsValid() && bValid;
-                bValid = CheckEditorTool() && bValid;
-                bValid = CheckMergeTool() && bValid;
-                bValid = CheckDiffToolConfiguration() && bValid;
-                bValid = CheckTranslationConfigSettings() && bValid;
+            var isValid = PerformChecks();
+            CheckAtStartup.Checked = IsCheckAtStartupChecked(isValid);
+            return isValid;
 
-                if (EnvUtils.RunningOnWindows())
+            bool PerformChecks()
+            {
+                bool result = true;
+                foreach (var func in CheckFuncs())
                 {
-                    bValid = CheckGitExtensionsInstall() && bValid;
-                    bValid = CheckGitExtensionRegistrySettings() && bValid;
-                    bValid = CheckGitExe() && bValid;
-                    bValid = CheckSSHSettings() && bValid;
+                    try
+                    {
+                        result &= func();
+                    }
+                    catch (Exception e)
+                    {
+                        MessageBox.Show(this, e.Message);
+                    }
+                }
+
+                return result;
+
+                IEnumerable<Func<bool>> CheckFuncs()
+                {
+                    yield return CheckGitCmdValid;
+                    yield return CheckGlobalUserSettingsValid;
+                    yield return CheckEditorTool;
+                    yield return CheckMergeTool;
+                    yield return CheckDiffToolConfiguration;
+                    yield return CheckTranslationConfigSettings;
+
+                    if (EnvUtils.RunningOnWindows())
+                    {
+                        yield return CheckGitExtensionsInstall;
+                        yield return CheckGitExtensionRegistrySettings;
+                        yield return CheckGitExe;
+                        yield return CheckSSHSettings;
+                        yield return CheckGitCredentialWinStore;
+                    }
                 }
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show(this, ex.Message);
-            }
-
-            CheckAtStartup.Checked = IsCheckAtStartupChecked(bValid);
-
-            return bValid;
         }
 
-        private static bool IsCheckAtStartupChecked(bool bValid)
+        private static bool IsCheckAtStartupChecked(bool isValid)
         {
             var retValue = AppSettings.CheckSettings;
 
-            if (bValid && retValue)
+            if (isValid && retValue)
             {
                 AppSettings.CheckSettings = false;
                 retValue = false;
             }
+
             return retValue;
+        }
+
+        /// <summary>
+        /// The Git Credential Manager for Windows (GCM) provides secure Git credential storage for Windows.
+        /// It's the successor to the Windows Credential Store for Git (git-credential-winstore), which is no longer maintained.
+        /// Check whether the user has an outdated setting pointing to git-credential-winstore and, if so,
+        /// notify the user and point to our GitHub thread with more information.
+        /// </summary>
+        /// <seealso href="https://github.com/gitextensions/gitextensions/issues/3511#issuecomment-313633897"/>
+        private bool CheckGitCredentialWinStore()
+        {
+            var setting = GetGlobalSetting(SettingKeyString.CredentialHelper) ?? string.Empty;
+            if (setting.IndexOf("git-credential-winstore.exe", StringComparison.OrdinalIgnoreCase) < 0)
+            {
+                GcmDetected.Visible = false;
+                GcmDetectedFix.Visible = false;
+                return true;
+            }
+
+            GcmDetected.Visible = true;
+            GcmDetectedFix.Visible = true;
+
+            RenderSettingUnset(GcmDetected, GcmDetectedFix, _gcmDetectedCaption.Text);
+            return false;
         }
 
         private bool CheckTranslationConfigSettings()
         {
-            translationConfig.Visible = true;
-            if (string.IsNullOrEmpty(AppSettings.Translation))
-            {
-                translationConfig.BackColor = Color.LightSalmon;
-                translationConfig.Text = _noLanguageConfigured.Text;
-                translationConfig_Fix.Visible = true;
-                return false;
-            }
-            translationConfig.BackColor = Color.LightGreen;
-            translationConfig_Fix.Visible = false;
-            translationConfig.Text = String.Format(_languageConfigured.Text, AppSettings.Translation);
-            return true;
+            return RenderSettingSetUnset(() => string.IsNullOrEmpty(AppSettings.Translation),
+                                    translationConfig, translationConfig_Fix,
+                                    _noLanguageConfigured.Text, string.Format(_languageConfigured.Text, AppSettings.Translation));
         }
 
         private bool CheckSSHSettings()
@@ -483,42 +540,23 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             SshConfig.Visible = true;
             if (GitCommandHelpers.Plink())
             {
-                if (!File.Exists(AppSettings.Plink) || !File.Exists(AppSettings.Puttygen) || !File.Exists(AppSettings.Pageant))
-                {
-                    SshConfig.BackColor = Color.LightSalmon;
-                    SshConfig.Text = _plinkputtyGenpageantNotFound.Text;
-                    SshConfig_Fix.Visible = true;
-                    return false;
-                }
-                SshConfig.BackColor = Color.LightGreen;
-                SshConfig_Fix.Visible = false;
-                SshConfig.Text = _puttyConfigured.Text;
-                return true;
+                return RenderSettingSetUnset(() => !File.Exists(AppSettings.Plink) || !File.Exists(AppSettings.Puttygen) || !File.Exists(AppSettings.Pageant),
+                                        SshConfig, SshConfig_Fix,
+                                        _plinkputtyGenpageantNotFound.Text,
+                                        _puttyConfigured.Text);
             }
-            SshConfig.BackColor = Color.LightGreen;
-            SshConfig_Fix.Visible = false;
-            if (string.IsNullOrEmpty(GitCommandHelpers.GetSsh()))
-                SshConfig.Text = _opensshUsed.Text;
-            else
-                SshConfig.Text = String.Format(_unknownSshClient.Text, GitCommandHelpers.GetSsh());
+
+            var ssh = _sshPathLocator.Find(AppSettings.GitBinDir);
+            RenderSettingSet(SshConfig, SshConfig_Fix, string.IsNullOrEmpty(ssh) ? _opensshUsed.Text : string.Format(_unknownSshClient.Text, ssh));
             return true;
         }
 
         private bool CheckGitExe()
         {
-            GitBinFound.Visible = true;
-            if (!File.Exists(AppSettings.GitBinDir + "sh.exe") && !File.Exists(AppSettings.GitBinDir + "sh") &&
-                !CheckSettingsLogic.CheckIfFileIsInPath("sh.exe") && !CheckSettingsLogic.CheckIfFileIsInPath("sh"))
-            {
-                GitBinFound.BackColor = Color.LightSalmon;
-                GitBinFound.Text = _linuxToolsSshNotFound.Text;
-                GitBinFound_Fix.Visible = true;
-                return false;
-            }
-            GitBinFound_Fix.Visible = false;
-            GitBinFound.BackColor = Color.LightGreen;
-            GitBinFound.Text = _linuxToolsSshFound.Text;
-            return true;
+            return RenderSettingSetUnset(() => !File.Exists(AppSettings.GitBinDir + "sh.exe") && !File.Exists(AppSettings.GitBinDir + "sh") &&
+                                         !CheckSettingsLogic.CheckIfFileIsInPath("sh.exe") && !CheckSettingsLogic.CheckIfFileIsInPath("sh"),
+                                   GitBinFound, GitBinFound_Fix,
+                                   _linuxToolsSshNotFound.Text, _linuxToolsSshFound.Text);
         }
 
         private bool CheckGitCmdValid()
@@ -526,58 +564,53 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             GitFound.Visible = true;
             if (!CheckSettingsLogic.CanFindGitCmd())
             {
-                GitFound.BackColor = Color.LightSalmon;
-                GitFound.Text = _gitNotFound.Text;
-                GitFound_Fix.Visible = true;
+                RenderSettingUnset(GitFound, GitFound_Fix, _gitNotFound.Text);
                 return false;
             }
 
-            if (GitCommandHelpers.VersionInUse < GitVersion.LastSupportedVersion)
+            if (GitVersion.Current < GitVersion.LastSupportedVersion)
             {
-                GitFound.BackColor = Color.LightSalmon;
-                GitFound.Text = String.Format(_wrongGitVersion.Text, GitCommandHelpers.VersionInUse, GitVersion.LastSupportedVersion);
-                GitFound_Fix.Visible = true;
+                RenderSettingUnset(GitFound, GitFound_Fix, string.Format(_wrongGitVersion.Text, GitVersion.Current, GitVersion.LastRecommendedVersion));
                 return false;
             }
 
-            GitFound_Fix.Visible = false;
-            GitFound.BackColor = Color.LightGreen;
-            GitFound.Text = String.Format(_gitVersionFound.Text, GitCommandHelpers.VersionInUse);
+            if (GitVersion.Current < GitVersion.LastRecommendedVersion)
+            {
+                RenderSettingNotRecommended(GitFound, GitFound_Fix, string.Format(_notRecommendedGitVersion.Text, GitVersion.Current, GitVersion.LastRecommendedVersion));
+                return false;
+            }
+
+            RenderSettingSet(GitFound, GitFound_Fix, string.Format(_gitVersionFound.Text, GitVersion.Current));
             return true;
         }
 
         private bool CheckDiffToolConfiguration()
         {
             DiffTool.Visible = true;
-            if (string.IsNullOrEmpty(CheckSettingsLogic.GetDiffToolFromConfig(CheckSettingsLogic.CommonLogic.ConfigFileSettingsSet.GlobalSettings)))
+            if (string.IsNullOrEmpty(CommonLogic.GetGlobalDiffTool()))
             {
-                DiffTool.BackColor = Color.LightSalmon;
-                DiffTool_Fix.Visible = true;
-                DiffTool.Text = _adviceDiffToolConfiguration.Text;
+                RenderSettingUnset(DiffTool, DiffTool_Fix, _adviceDiffToolConfiguration.Text);
                 return false;
             }
+
             if (EnvUtils.RunningOnWindows())
             {
-                if (CheckSettingsLogic.GetDiffToolFromConfig(CheckSettingsLogic.CommonLogic.ConfigFileSettingsSet.GlobalSettings).Equals("kdiff3", StringComparison.CurrentCultureIgnoreCase))
+                if (CommonLogic.IsDiffTool("kdiff3"))
                 {
                     string p = GetGlobalSetting("difftool.kdiff3.path");
                     if (string.IsNullOrEmpty(p) || !File.Exists(p))
                     {
-                        DiffTool.BackColor = Color.LightSalmon;
-                        DiffTool.Text = _kdiffAsDiffConfiguredButNotFound.Text;
-                        DiffTool_Fix.Visible = true;
+                        RenderSettingUnset(DiffTool, DiffTool_Fix, _kdiffAsDiffConfiguredButNotFound.Text);
                         return false;
                     }
-                    DiffTool.BackColor = Color.LightGreen;
-                    DiffTool.Text = _kdiffAsDiffConfigured.Text;
-                    DiffTool_Fix.Visible = false;
+
+                    RenderSettingSet(DiffTool, DiffTool_Fix, _kdiffAsDiffConfigured.Text);
                     return true;
                 }
             }
-            string difftool = CheckSettingsLogic.GetDiffToolFromConfig(CheckSettingsLogic.CommonLogic.ConfigFileSettingsSet.GlobalSettings);
-            DiffTool.BackColor = Color.LightGreen;
-            DiffTool.Text = String.Format(_diffToolXConfigured.Text, difftool);
-            DiffTool_Fix.Visible = false;
+
+            string difftool = CommonLogic.GetGlobalDiffTool().ToLowerInvariant();
+            RenderSettingSet(DiffTool, DiffTool_Fix, string.Format(_diffToolXConfigured.Text, difftool));
             return true;
         }
 
@@ -586,12 +619,11 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             MergeTool.Visible = true;
             if (string.IsNullOrEmpty(CommonLogic.GetGlobalMergeTool()))
             {
-                MergeTool.BackColor = Color.LightSalmon;
-                MergeTool.Text = _configureMergeTool.Text;
-                MergeTool_Fix.Visible = true;
+                RenderSettingUnset(MergeTool, MergeTool_Fix, _configureMergeTool.Text);
                 return false;
             }
 
+            string mergetool = CommonLogic.GetGlobalMergeTool().ToLowerInvariant();
             if (EnvUtils.RunningOnWindows())
             {
                 if (CommonLogic.IsMergeTool("kdiff3"))
@@ -599,54 +631,38 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
                     string p = GetGlobalSetting("mergetool.kdiff3.path");
                     if (string.IsNullOrEmpty(p) || !File.Exists(p))
                     {
-                        MergeTool.BackColor = Color.LightSalmon;
-                        MergeTool.Text = _kdiffAsMergeConfiguredButNotFound.Text;
-                        MergeTool_Fix.Visible = true;
+                        RenderSettingUnset(MergeTool, MergeTool_Fix, _kdiffAsMergeConfiguredButNotFound.Text);
                         return false;
                     }
-                    MergeTool.BackColor = Color.LightGreen;
-                    MergeTool.Text = _kdiffAsMergeConfigured.Text;
-                    MergeTool_Fix.Visible = false;
+
+                    RenderSettingSet(MergeTool, MergeTool_Fix, _kdiffAsMergeConfigured.Text);
                     return true;
                 }
-                string mergetool = CommonLogic.GetGlobalMergeTool().ToLowerInvariant();
-                if (mergetool == "p4merge" || mergetool == "tmerge")
+
+                if (mergetool == "p4merge" || mergetool == "tmerge" || mergetool == "meld")
                 {
-                    string p = GetGlobalSetting(string.Format("mergetool.{0}.cmd", mergetool));
+                    string p = GetGlobalSetting($"mergetool.{mergetool}.cmd");
                     if (string.IsNullOrEmpty(p))
                     {
-                        MergeTool.BackColor = Color.LightSalmon;
-                        MergeTool.Text = String.Format(_mergeToolXConfiguredNeedsCmd.Text, mergetool);
-                        MergeTool_Fix.Visible = true;
+                        RenderSettingUnset(MergeTool, MergeTool_Fix, string.Format(_mergeToolXConfiguredNeedsCmd.Text, mergetool));
                         return false;
                     }
-                    MergeTool.BackColor = Color.LightGreen;
-                    MergeTool.Text = String.Format(_customMergeToolXConfigured.Text, mergetool);
-                    MergeTool_Fix.Visible = false;
+
+                    RenderSettingSet(MergeTool, MergeTool_Fix, string.Format(_customMergeToolXConfigured.Text, mergetool));
                     return true;
                 }
             }
-            MergeTool.BackColor = Color.LightGreen;
-            MergeTool.Text = _mergeToolXConfigured.Text;
-            MergeTool_Fix.Visible = false;
+
+            RenderSettingSet(MergeTool, MergeTool_Fix, string.Format(_mergeToolXConfigured.Text, mergetool));
             return true;
         }
 
         private bool CheckGlobalUserSettingsValid()
         {
-            UserNameSet.Visible = true;
-            if (string.IsNullOrEmpty(GetGlobalSetting(SettingKeyString.UserName)) ||
-                string.IsNullOrEmpty(GetGlobalSetting(SettingKeyString.UserEmail)))
-            {
-                UserNameSet.BackColor = Color.LightSalmon;
-                UserNameSet.Text = _noEmailSet.Text;
-                UserNameSet_Fix.Visible = true;
-                return false;
-            }
-            UserNameSet.BackColor = Color.LightGreen;
-            UserNameSet.Text = _emailSet.Text;
-            UserNameSet_Fix.Visible = false;
-            return true;
+            return RenderSettingSetUnset(() => string.IsNullOrEmpty(GetGlobalSetting(SettingKeyString.UserName)) ||
+                                         string.IsNullOrEmpty(GetGlobalSetting(SettingKeyString.UserEmail)),
+                                   UserNameSet, UserNameSet_Fix,
+                                   _noEmailSet.Text, _emailSet.Text);
         }
 
         private bool CheckEditorTool()
@@ -658,66 +674,116 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
         private bool CheckGitExtensionRegistrySettings()
         {
             if (!EnvUtils.RunningOnWindows())
+            {
                 return true;
+            }
 
             ShellExtensionsRegistered.Visible = true;
 
-            if (string.IsNullOrEmpty(CommonLogic.GetRegistryValue(Registry.LocalMachine, "Software\\Microsoft\\Windows\\CurrentVersion\\Shell Extensions\\Approved",
+            if (string.IsNullOrEmpty(CommonLogic.GetRegistryValue(Registry.LocalMachine, @"Software\Microsoft\Windows\CurrentVersion\Shell Extensions\Approved",
                                                       "{3C16B20A-BA16-4156-916F-0A375ECFFE24}")) ||
                 string.IsNullOrEmpty(CommonLogic.GetRegistryValue(Registry.ClassesRoot,
-                                                      "*\\shellex\\ContextMenuHandlers\\GitExtensions2", null)) ||
+                                                      @"*\shellex\ContextMenuHandlers\GitExtensions2", null)) ||
                 string.IsNullOrEmpty(CommonLogic.GetRegistryValue(Registry.ClassesRoot,
-                                                      "Directory\\shellex\\ContextMenuHandlers\\GitExtensions2", null)) ||
+                                                      @"Directory\shellex\ContextMenuHandlers\GitExtensions2", null)) ||
                 string.IsNullOrEmpty(CommonLogic.GetRegistryValue(Registry.ClassesRoot,
-                                                      "Directory\\Background\\shellex\\ContextMenuHandlers\\GitExtensions2",
+                                                      @"Directory\Background\shellex\ContextMenuHandlers\GitExtensions2",
                                                       null)))
             {
-                //Check if shell extensions are installed
+                // Check if shell extensions are installed
                 string path32 = Path.Combine(AppSettings.GetInstallDir(), CommonLogic.GitExtensionsShellEx32Name);
                 string path64 = Path.Combine(AppSettings.GetInstallDir(), CommonLogic.GitExtensionsShellEx64Name);
                 if (!File.Exists(path32) || (IntPtr.Size == 8 && !File.Exists(path64)))
                 {
-                    ShellExtensionsRegistered.BackColor = Color.LightGreen;
-                    ShellExtensionsRegistered.Text = String.Format(_shellExtNoInstalled.Text);
-                    ShellExtensionsRegistered_Fix.Visible = false;
+                    RenderSettingSet(ShellExtensionsRegistered, ShellExtensionsRegistered_Fix, _shellExtNoInstalled.Text);
                     return true;
                 }
 
-                ShellExtensionsRegistered.BackColor = Color.LightSalmon;
-                ShellExtensionsRegistered.Text = String.Format(_shellExtNeedsToBeRegistered.Text, CommonLogic.GitExtensionsShellEx32Name);
-                ShellExtensionsRegistered_Fix.Visible = true;
+                RenderSettingUnset(ShellExtensionsRegistered, ShellExtensionsRegistered_Fix, string.Format(_shellExtNeedsToBeRegistered.Text, CommonLogic.GitExtensionsShellEx32Name));
                 return false;
             }
-            ShellExtensionsRegistered.BackColor = Color.LightGreen;
-            ShellExtensionsRegistered.Text = _shellExtRegistered.Text;
-            ShellExtensionsRegistered_Fix.Visible = false;
+
+            RenderSettingSet(ShellExtensionsRegistered, ShellExtensionsRegistered_Fix, _shellExtRegistered.Text);
             return true;
         }
 
         private bool CheckGitExtensionsInstall()
         {
             if (!EnvUtils.RunningOnWindows())
+            {
                 return true;
+            }
 
             GitExtensionsInstall.Visible = true;
-            if (string.IsNullOrEmpty(AppSettings.GetInstallDir()))
+
+            var installDir = AppSettings.GetInstallDir();
+
+            if (string.IsNullOrEmpty(installDir))
             {
-                GitExtensionsInstall.BackColor = Color.LightSalmon;
-                GitExtensionsInstall.Text = _registryKeyGitExtensionsMissing.Text;
-                GitExtensionsInstall_Fix.Visible = true;
+                RenderSettingUnset(GitExtensionsInstall, GitExtensionsInstall_Fix, _registryKeyGitExtensionsMissing.Text);
                 return false;
             }
-            if (AppSettings.GetInstallDir() != null && AppSettings.GetInstallDir().EndsWith(".exe"))
+
+            if (installDir.EndsWith(".exe"))
             {
-                GitExtensionsInstall.BackColor = Color.LightSalmon;
-                GitExtensionsInstall.Text = _registryKeyGitExtensionsFaulty.Text;
-                GitExtensionsInstall_Fix.Visible = true;
+                RenderSettingUnset(GitExtensionsInstall, GitExtensionsInstall_Fix, _registryKeyGitExtensionsFaulty.Text);
                 return false;
             }
-            GitExtensionsInstall.BackColor = Color.LightGreen;
-            GitExtensionsInstall.Text = _registryKeyGitExtensionsCorrect.Text;
-            GitExtensionsInstall_Fix.Visible = false;
+
+            RenderSettingSet(GitExtensionsInstall, GitExtensionsInstall_Fix, _registryKeyGitExtensionsCorrect.Text);
             return true;
+        }
+
+        /// <summary>
+        /// Renders settings as configured or not depending on the supplied condition.
+        /// </summary>
+        private static bool RenderSettingSetUnset(Func<bool> condition, Button settingButton, Button settingFixButton,
+            string textSettingUnset, string textSettingGood)
+        {
+            settingButton.Visible = true;
+            if (condition())
+            {
+                RenderSettingUnset(settingButton, settingFixButton, textSettingUnset);
+                return false;
+            }
+
+            RenderSettingSet(settingButton, settingFixButton, textSettingGood);
+            return true;
+        }
+
+        /// <summary>
+        /// Renders settings as correctly configured.
+        /// </summary>
+        private static void RenderSettingSet(Button settingButton, Button settingFixButton, string text)
+        {
+            settingButton.BackColor = Color.PaleGreen;
+            settingButton.ForeColor = Color.DarkGreen;
+            settingButton.Text = text;
+            settingFixButton.Visible = false;
+        }
+
+        /// <summary>
+        /// Renders settings as misconfigured.
+        /// </summary>
+        private static void RenderSettingUnset(Button settingButton, Button settingFixButton, string text)
+        {
+            settingButton.BackColor = Color.LavenderBlush;
+            settingButton.ForeColor = Color.Crimson;
+            settingButton.Text = text;
+            settingFixButton.Visible = true;
+        }
+
+        private static void RenderSettingNotRecommended(Button settingButton, Button settingFixButton, string text)
+        {
+            settingButton.BackColor = Color.Coral;
+            settingButton.ForeColor = Color.Black;
+            settingButton.Text = text;
+            settingFixButton.Visible = true;
+        }
+
+        private void GcmDetectedFix_Click(object sender, EventArgs e)
+        {
+            Process.Start("https://github.com/gitextensions/gitextensions/wiki/How-To:-fix-GitCredentialWinStore-missing");
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using GitCommands;
 using GitCommands.Utils;
 using Microsoft.Win32;
@@ -9,17 +10,15 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
 {
     public partial class SshSettingsPage : SettingsPageWithHeader
     {
+        private readonly ISshPathLocator _sshPathLocator = new SshPathLocator();
 
         public SshSettingsPage()
         {
             InitializeComponent();
             Text = "SSH";
-            Translate();
-        }
+            InitializeComplete();
 
-        protected override string GetCommaSeparatedKeywordList()
-        {
-            return "plink,putty,openssh,pageant";
+            label18.ForeColor = ColorHelper.GetForeColorForBackColor(label18.BackColor);
         }
 
         public static SettingsPageReference GetPageReference()
@@ -34,13 +33,18 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             PageantPath.Text = AppSettings.Pageant;
             AutostartPageant.Checked = AppSettings.AutoStartPageant;
 
-            if (string.IsNullOrEmpty(GitCommandHelpers.GetSsh()))
+            var sshPath = _sshPathLocator.Find(AppSettings.GitBinDir);
+            if (string.IsNullOrEmpty(sshPath))
+            {
                 OpenSSH.Checked = true;
+            }
             else if (GitCommandHelpers.Plink())
+            {
                 Putty.Checked = true;
+            }
             else
             {
-                OtherSsh.Text = GitCommandHelpers.GetSsh();
+                OtherSsh.Text = sshPath;
                 Other.Checked = true;
             }
 
@@ -55,13 +59,19 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             AppSettings.AutoStartPageant = AutostartPageant.Checked;
 
             if (OpenSSH.Checked)
+            {
                 GitCommandHelpers.UnsetSsh();
+            }
 
             if (Putty.Checked)
+            {
                 GitCommandHelpers.SetSsh(PlinkPath.Text);
+            }
 
             if (Other.Checked)
+            {
                 GitCommandHelpers.SetSsh(OtherSsh.Text);
+            }
         }
 
         private void OpenSSH_CheckedChanged(object sender, EventArgs e)
@@ -76,28 +86,45 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             {
                 AutoFindPuttyPaths();
             }
+
             EnableSshOptions();
         }
 
         private IEnumerable<string> GetPuttyLocations()
         {
             string envVariable = Environment.GetEnvironmentVariable("GITEXT_PUTTY");
-            if (!String.IsNullOrEmpty(envVariable)) yield return envVariable;
+            if (!string.IsNullOrEmpty(envVariable))
+            {
+                yield return envVariable;
+            }
+
             yield return Path.Combine(AppSettings.GetInstallDir(), @"PuTTY\");
             string programFiles = Environment.GetEnvironmentVariable("ProgramFiles");
             string programFilesX86 = null;
-            if (8 == IntPtr.Size
-                || !String.IsNullOrEmpty(Environment.GetEnvironmentVariable("PROCESSOR_ARCHITEW6432")))
+            if (IntPtr.Size == 8
+                || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PROCESSOR_ARCHITEW6432")))
+            {
                 programFilesX86 = Environment.GetEnvironmentVariable("ProgramFiles(x86)");
+            }
+
             yield return programFiles + @"\TortoiseGit\bin\";
             if (programFilesX86 != null)
+            {
                 yield return programFilesX86 + @"\TortoiseGit\bin\";
+            }
+
             yield return programFiles + @"\TortoiseSvn\bin\";
             if (programFilesX86 != null)
+            {
                 yield return programFilesX86 + @"\TortoiseSvn\bin\";
+            }
+
             yield return programFiles + @"\PuTTY\";
             if (programFilesX86 != null)
+            {
                 yield return programFilesX86 + @"\PuTTY\";
+            }
+
             yield return CommonLogic.GetRegistryValue(Registry.LocalMachine,
                                                         "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\PuTTY_is1",
                                                         "InstallLocation");
@@ -106,46 +133,57 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
         public bool AutoFindPuttyPaths()
         {
             if (!EnvUtils.RunningOnWindows())
-                return false;
-
-            foreach (var path in GetPuttyLocations())
             {
-                if (AutoFindPuttyPathsInDir(path))
-                    return true;
+                return false;
             }
-            return false;
+
+            return GetPuttyLocations().Any(AutoFindPuttyPathsInDir);
         }
 
         private bool AutoFindPuttyPathsInDir(string installdir)
         {
             if (!installdir.EndsWith("\\"))
+            {
                 installdir += "\\";
+            }
 
             if (!File.Exists(PlinkPath.Text))
             {
                 if (File.Exists(installdir + "plink.exe"))
+                {
                     PlinkPath.Text = installdir + "plink.exe";
+                }
+
                 if (!File.Exists(PlinkPath.Text))
                 {
                     if (File.Exists(installdir + "TortoisePlink.exe"))
+                    {
                         PlinkPath.Text = installdir + "TortoisePlink.exe";
+                    }
                 }
             }
 
             if (!File.Exists(PuttygenPath.Text))
             {
                 if (File.Exists(installdir + "puttygen.exe"))
+                {
                     PuttygenPath.Text = installdir + "puttygen.exe";
+                }
             }
 
             if (!File.Exists(PageantPath.Text))
             {
                 if (File.Exists(installdir + "pageant.exe"))
+                {
                     PageantPath.Text = installdir + "pageant.exe";
+                }
             }
 
             if (File.Exists(PlinkPath.Text) && File.Exists(PuttygenPath.Text) && File.Exists(PageantPath.Text))
+            {
                 return true;
+            }
+
             return false;
         }
 

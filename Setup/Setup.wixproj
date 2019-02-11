@@ -1,11 +1,11 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <Import Project="..\packages\WiX.3.11.0\build\wix.props" Condition="Exists('..\packages\WiX.3.11.0\build\wix.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
     <Version Condition=" '$(Version)' == '' ">0.00</Version>
     <NumericVersion Condition=" '$(NumericVersion)' == '' ">$(Version)</NumericVersion>
-    <IncludeRequiredSoftware Condition=" '$(IncludeRequiredSoftware)' == '' ">1</IncludeRequiredSoftware>
     <ProductVersion>3.0</ProductVersion>
     <ProjectGuid>{9380c29c-3c7f-47a8-a4c9-a5ee9d7b386a}</ProjectGuid>
     <SchemaVersion>2.0</SchemaVersion>
@@ -13,11 +13,10 @@
     <OutputType>Package</OutputType>
     <DefineSolutionProperties>false</DefineSolutionProperties>
   </PropertyGroup>
-  <Import Project="..\packages\WiX.3.10.3\build\wix.props" Condition="Exists('..\packages\WiX.3.10.3\build\wix.props')" />
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <OutputPath>bin\$(Configuration)\</OutputPath>
     <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
-    <DefineConstants>Debug;Version=$(Version);NumericVersion=$(NumericVersion);IncludeRequiredSoftware=$(IncludeRequiredSoftware)</DefineConstants>
+    <DefineConstants>Debug;Version=$(Version);NumericVersion=$(NumericVersion)</DefineConstants>
     <SuppressIces>ICE61;ICE80;ICE91;ICE38</SuppressIces>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
@@ -25,12 +24,15 @@
     <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
     <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
     <SuppressIces>ICE61;ICE80;ICE91;ICE38</SuppressIces>
-    <DefineConstants>Version=$(Version);NumericVersion=$(NumericVersion);IncludeRequiredSoftware=$(IncludeRequiredSoftware)</DefineConstants>
+    <DefineConstants>Version=$(Version);NumericVersion=$(NumericVersion)</DefineConstants>
+    <!--
+    <DefineConstants>Version=$(Version);NumericVersion=$(NumericVersion);PluginManagerSourceDir=..\Plugins\GitExtensions.PluginManager\Output</DefineConstants>
+    -->
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
     <OutputPath>bin\$(Configuration)\</OutputPath>
     <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
-    <DefineConstants>Debug;Version=$(Version);NumericVersion=$(NumericVersion);IncludeRequiredSoftware=$(IncludeRequiredSoftware)</DefineConstants>
+    <DefineConstants>Debug;Version=$(Version);NumericVersion=$(NumericVersion)</DefineConstants>
     <SuppressIces>ICE61;ICE80;ICE91;ICE38</SuppressIces>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
@@ -38,9 +40,12 @@
     <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
     <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
     <SuppressIces>ICE61;ICE80;ICE91;ICE38</SuppressIces>
-    <DefineConstants>Version=$(Version);NumericVersion=$(NumericVersion);IncludeRequiredSoftware=$(IncludeRequiredSoftware)</DefineConstants>
+    <DefineConstants>Version=$(Version);NumericVersion=$(NumericVersion)</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
+    <!--
+    <Compile Include="PluginManager.wxs" />
+    -->
     <Compile Include="Product.wxs" />
     <Compile Include="UI\CancelDlg.wxs" />
     <Compile Include="UI\CustomizeDlg.wxs" />
@@ -51,7 +56,6 @@
     <Compile Include="UI\MaintenanceTypeDlg.wxs" />
     <Compile Include="UI\MaintenanceWelcomeDlg.wxs" />
     <Compile Include="UI\ProgressDlg.wxs" />
-    <Compile Include="UI\RequiredSoftwareDlg.wxs" />
     <Compile Include="UI\SSHClientDlg.wxs" />
     <Compile Include="UI\UserExit.wxs" />
     <Compile Include="UI\VerifyReadyDlg.wxs" />
@@ -62,6 +66,7 @@
     <Content Include="AddRemove.wxi" />
     <Content Include="Config.wxi" />
     <Content Include="EnableUpgrades.wxi" />
+    <None Include="MakePortableArchive.cmd" />
     <Content Include="packages.config" />
     <Content Include="RegisterShellExtension.wxi" />
   </ItemGroup>
@@ -82,19 +87,24 @@
   <ItemGroup>
     <Folder Include="UI" />
   </ItemGroup>
-  <Import Project="$(WixTargetsPath)" />
+  <Import Project="$(WixTargetsPath)" Condition="Exists('$(WixTargetsPath)')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
-    <Error Condition="!Exists('..\packages\WiX.3.10.3\build\wix.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\WiX.3.10.3\build\wix.props'))" />
+    <Error Condition="!Exists('..\packages\WiX.3.11.0\build\wix.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\WiX.3.11.0\build\wix.props'))" />
+  </Target>
+  <Target Name="BeforeBuild">
+    <Exec Command="
+	call BuildGitExtNative.cmd $(Configuration) build">
+    </Exec>
   </Target>
   <!--
-	To modify your build process, add your task inside one of the targets below and uncomment it.
-	Other similar extension points exist, see Wix.targets.
-	<Target Name="BeforeBuild">
-	</Target>
-	<Target Name="AfterBuild">
-	</Target>
-	-->
+  <Target Name="HeatPluginMananger" BeforeTargets="BeforeBuild">
+    <HeatDirectory Directory="..\Plugins\GitExtensions.PluginManager\Output" OutputFile="PluginManager.wxs" ComponentGroupName="PluginMananger" DirectoryRefId="PluginsDir" PreprocessorVariable="var.PluginManagerSourceDir" AutogenerateGuids="true" ToolPath="$(WixToolPath)" SuppressFragments="true" SuppressRegistry="true" SuppressRootDirectory="true" />
+  </Target>
+  <Target Name="DownloadPluginMananger" BeforeTargets="HeatPluginMananger">
+    <Exec Command="powershell.exe .\Download-PluginManager.ps1 -ExtractRootPath '..\Plugins\GitExtensions.PluginManager'" />
+  </Target>
+  -->
 </Project>

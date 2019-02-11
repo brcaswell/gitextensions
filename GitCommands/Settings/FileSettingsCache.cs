@@ -1,34 +1,32 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Text;
 using GitCommands.Utils;
 
 namespace GitCommands.Settings
 {
     public abstract class FileSettingsCache : SettingsCache
     {
-        private const double SAVETIME = 2000;
-        private DateTime? LastFileRead = null;
-        private DateTime LastFileModificationDate = DateTime.MaxValue;
-        private DateTime? LastModificationDate = null;
+        private const double SaveTime = 2000;
+        private DateTime? _lastFileRead;
+        private DateTime _lastFileModificationDate = DateTime.MaxValue;
+        private DateTime? _lastModificationDate;
         private readonly FileSystemWatcher _fileWatcher = new FileSystemWatcher();
-        private bool canEnableFileWatcher = false;
+        private readonly bool _canEnableFileWatcher;
 
-        private System.Timers.Timer SaveTimer = new System.Timers.Timer(SAVETIME);
-        private bool _autoSave = true;
+        private System.Timers.Timer _saveTimer = new System.Timers.Timer(SaveTime);
+        private readonly bool _autoSave;
 
-        public string SettingsFilePath { get; private set; }
+        public string SettingsFilePath { get; }
 
-        public FileSettingsCache(string aSettingsFilePath, bool autoSave = true)
+        protected FileSettingsCache(string settingsFilePath, bool autoSave = true)
         {
-            SettingsFilePath = aSettingsFilePath;
+            SettingsFilePath = settingsFilePath;
             _autoSave = autoSave;
 
-            SaveTimer.Enabled = false;
-            SaveTimer.AutoReset = false;
-            SaveTimer.Elapsed += new System.Timers.ElapsedEventHandler(OnSaveTimer);
+            _saveTimer.Enabled = false;
+            _saveTimer.AutoReset = false;
+            _saveTimer.Elapsed += OnSaveTimer;
 
             _fileWatcher.IncludeSubdirectories = false;
             _fileWatcher.EnableRaisingEvents = false;
@@ -40,19 +38,20 @@ namespace GitCommands.Settings
             {
                 _fileWatcher.Path = dir;
                 _fileWatcher.Filter = Path.GetFileName(SettingsFilePath);
-                canEnableFileWatcher = true;
-                _fileWatcher.EnableRaisingEvents = canEnableFileWatcher;
+                _canEnableFileWatcher = true;
+                _fileWatcher.EnableRaisingEvents = _canEnableFileWatcher;
             }
+
             FileChanged();
         }
 
-        void _fileWatcher_Created(object sender, FileSystemEventArgs e)
+        private void _fileWatcher_Created(object sender, FileSystemEventArgs e)
         {
-            LastFileRead = null;
+            _lastFileRead = null;
             FileChanged();
         }
 
-        void _fileWatcher_Renamed(object sender, RenamedEventArgs e)
+        private void _fileWatcher_Renamed(object sender, RenamedEventArgs e)
         {
             FileChanged();
         }
@@ -65,11 +64,10 @@ namespace GitCommands.Settings
             {
                 LockedAction(() =>
                 {
-                    if (SaveTimer != null)
+                    if (_saveTimer != null)
                     {
-
-                        SaveTimer.Dispose();
-                        SaveTimer = null;
+                        _saveTimer.Dispose();
+                        _saveTimer = null;
                         _fileWatcher.Changed -= _fileWatcher_Changed;
                         _fileWatcher.Renamed -= _fileWatcher_Renamed;
                         _fileWatcher.Created -= _fileWatcher_Created;
@@ -87,10 +85,10 @@ namespace GitCommands.Settings
             base.Dispose(disposing);
         }
 
-        public static T FromCache<T>(string aSettingsFilePath, Lazy<T> createSettingsCache)
+        public static T FromCache<T>(string settingsFilePath, Lazy<T> createSettingsCache)
              where T : FileSettingsCache
         {
-            return WeakRefCache.Default.Get(aSettingsFilePath + ":" + typeof(T).FullName, createSettingsCache);
+            return WeakRefCache.Default.Get(settingsFilePath + ":" + typeof(T).FullName, createSettingsCache);
         }
 
         private void _fileWatcher_Changed(object sender, FileSystemEventArgs e)
@@ -99,23 +97,25 @@ namespace GitCommands.Settings
         }
 
         private void FileChanged()
-        {           
-            LastFileModificationDate = GetLastFileModificationUTC();
+        {
+            _lastFileModificationDate = GetLastFileModificationUtc();
         }
 
-        private DateTime GetLastFileModificationUTC()
+        private DateTime GetLastFileModificationUtc()
         {
             try
             {
                 if (File.Exists(SettingsFilePath))
+                {
                     return File.GetLastWriteTimeUtc(SettingsFilePath);
-                else
-                    return DateTime.MaxValue;
+                }
             }
-            catch (Exception)
+            catch
             {
-                return DateTime.MaxValue;
+                // no-op
             }
+
+            return DateTime.MaxValue;
         }
 
         protected abstract void WriteSettings(string fileName);
@@ -125,34 +125,40 @@ namespace GitCommands.Settings
         {
             try
             {
-                var tmpFile = SettingsFilePath + ".tmp";
-
-                if (!LastModificationDate.HasValue || (LastFileRead.HasValue
-                        && LastModificationDate.Value < LastFileRead.Value))
+                if (!_lastModificationDate.HasValue ||
+                    (_lastFileRead.HasValue && _lastModificationDate.Value < _lastFileRead.Value))
                 {
                     return;
                 }
 
+                int currentProcessId;
+                using (var currentProcess = Process.GetCurrentProcess())
+                {
+                    currentProcessId = currentProcess.Id;
+                }
+
+                var tmpFile = SettingsFilePath + currentProcessId + ".tmp";
                 WriteSettings(tmpFile);
 
                 if (File.Exists(SettingsFilePath))
                 {
-                    File.Replace(tmpFile, SettingsFilePath, SettingsFilePath + ".backup", true);
+                    var backupName = SettingsFilePath + ".backup";
+                    File.Copy(SettingsFilePath, backupName, true);
                 }
-                else
+
+                File.Copy(tmpFile, SettingsFilePath, true);
+                File.Delete(tmpFile);
+
+                _lastFileModificationDate = GetLastFileModificationUtc();
+                _lastFileRead = DateTime.UtcNow;
+                if (_saveTimer != null)
                 {
-                    File.Move(tmpFile, SettingsFilePath);
+                    _fileWatcher.EnableRaisingEvents = _canEnableFileWatcher;
                 }
-
-                LastFileModificationDate = GetLastFileModificationUTC();
-                LastFileRead = DateTime.UtcNow;
-                if (SaveTimer != null)
-                    _fileWatcher.EnableRaisingEvents = canEnableFileWatcher;
             }
-
             catch (IOException e)
             {
-                System.Diagnostics.Debug.WriteLine(e.Message);
+                Debug.WriteLine(e.Message);
                 throw;
             }
         }
@@ -164,54 +170,56 @@ namespace GitCommands.Settings
                 try
                 {
                     ReadSettings(SettingsFilePath);
-                    LastFileRead = DateTime.UtcNow;
-                    _fileWatcher.EnableRaisingEvents = canEnableFileWatcher;
+                    _lastFileRead = DateTime.UtcNow;
+                    _fileWatcher.EnableRaisingEvents = _canEnableFileWatcher;
                 }
-                catch (IOException e)
+                catch (Exception e)
                 {
-                    System.Diagnostics.Debug.WriteLine(e.Message);
-                    throw;
+                    // TODO: should we report it to the user somehow?
+                    Debug.WriteLine(e.Message);
                 }
             }
             else
             {
-                LastFileRead = DateTime.UtcNow;
-                LastFileModificationDate = LastFileRead.Value;
+                _lastFileRead = DateTime.UtcNow;
+                _lastFileModificationDate = _lastFileRead.Value;
             }
         }
 
         protected override bool NeedRefresh()
         {
-            return !LastFileRead.HasValue || LastFileModificationDate > LastFileRead.Value;
+            return !_lastFileRead.HasValue || _lastFileModificationDate > _lastFileRead.Value;
         }
 
         protected override void SettingsChanged()
         {
             base.SettingsChanged();
 
-            LastModificationDate = DateTime.UtcNow;
+            _lastModificationDate = DateTime.UtcNow;
 
             if (_autoSave)
+            {
                 StartSaveTimer();
+            }
         }
 
-        //Used to eliminate multiple settings file open and close to save multiple values.  Settings will be saved SAVETIME milliseconds after the last setvalue is called
+        // Used to eliminate multiple settings file open and close to save multiple values.  Settings will be saved SAVETIME milliseconds after the last setvalue is called
         private void OnSaveTimer(object source, System.Timers.ElapsedEventArgs e)
         {
-            System.Timers.Timer t = (System.Timers.Timer)source;
+            var t = (System.Timers.Timer)source;
             t.Stop();
             Save();
         }
 
         private void StartSaveTimer()
         {
-            //Resets timer so that the last call will let the timer event run and will cause the settings to be saved.
-            SaveTimer.Stop();
-            SaveTimer.AutoReset = true;
-            SaveTimer.Interval = SAVETIME;
-            SaveTimer.AutoReset = false;
+            // Resets timer so that the last call will let the timer event run and will cause the settings to be saved.
+            _saveTimer.Stop();
+            _saveTimer.AutoReset = true;
+            _saveTimer.Interval = SaveTime;
+            _saveTimer.AutoReset = false;
 
-            SaveTimer.Start();
+            _saveTimer.Start();
         }
     }
 }

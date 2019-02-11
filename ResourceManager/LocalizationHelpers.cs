@@ -1,12 +1,17 @@
 using System;
 using System.Text;
 using GitCommands;
+using GitCommands.Git;
+using GitCommands.Patches;
 using JetBrains.Annotations;
+using ResourceManager.CommitDataRenders;
 
 namespace ResourceManager
 {
-    static public class LocalizationHelpers
+    public static class LocalizationHelpers
     {
+        private static readonly ICommitDataHeaderRenderer PlainCommitDataHeaderRenderer = new CommitDataHeaderRenderer(new MonospacedHeaderLabelFormatter(), new DateFormatter(), new MonospacedHeaderRenderStyleProvider(), null);
+
         private static DateTime RoundDateTime(DateTime dateTime)
         {
             return new DateTime(dateTime.Year, dateTime.Month, dateTime.Day, dateTime.Hour, dateTime.Minute, dateTime.Second);
@@ -21,7 +26,7 @@ namespace ResourceManager
         /// <param name="previousDate">The date to get relative time string for.</param>
         /// <param name="displayWeeks">Indicates whether to display weeks.</param>
         /// <returns>The human readable string for relative date.</returns>
-        /// <see cref="http://stackoverflow.com/questions/11/how-do-i-calculate-relative-time"/>
+        /// <see href="http://stackoverflow.com/questions/11/how-do-i-calculate-relative-time"/>
         public static string GetRelativeDateString(DateTime originDate, DateTime previousDate, bool displayWeeks = true)
         {
             var ts = new TimeSpan(RoundDateTime(originDate).Ticks - RoundDateTime(previousDate).Ticks);
@@ -31,30 +36,36 @@ namespace ResourceManager
             {
                 return Strings.GetNSecondsAgoText(ts.Seconds);
             }
+
             if (delta < 45 * 60)
             {
                 return Strings.GetNMinutesAgoText(ts.Minutes);
             }
+
             if (delta < 24 * 60 * 60)
             {
                 int hours = delta < 60 * 60 ? Math.Sign(ts.Minutes) * 1 : ts.Hours;
                 return Strings.GetNHoursAgoText(hours);
             }
+
             // 30.417 = 365 days / 12 months - note that the if statement only bothers with 30 days for "1 month ago" because ts.Days is int
             if (delta < (displayWeeks ? 7 : 30) * 24 * 60 * 60)
             {
                 return Strings.GetNDaysAgoText(ts.Days);
             }
+
             if (displayWeeks && delta < 30 * 24 * 60 * 60)
             {
                 int weeks = Convert.ToInt32(ts.Days / 7.0);
                 return Strings.GetNWeeksAgoText(weeks);
             }
+
             if (delta < 365 * 24 * 60 * 60)
             {
                 int months = Convert.ToInt32(ts.Days / 30.0);
                 return Strings.GetNMonthsAgoText(months);
             }
+
             int years = Convert.ToInt32(ts.Days / 365.0);
             return Strings.GetNYearsAgoText(years);
         }
@@ -67,92 +78,121 @@ namespace ResourceManager
 
         public static string GetSubmoduleText(GitModule superproject, string name, string hash)
         {
-            StringBuilder sb = new StringBuilder();
+            var sb = new StringBuilder();
             sb.AppendLine("Submodule " + name);
             sb.AppendLine();
             GitModule module = superproject.GetSubmodule(name);
             if (module.IsValidGitWorkingDir())
             {
-                string error = "";
-                CommitData data = CommitData.GetCommitData(module, hash, ref error);
+                // TEMP, will be moved in the follow up refactor
+                ICommitDataManager commitDataManager = new CommitDataManager(() => module);
+
+                CommitData data = commitDataManager.GetCommitData(hash, out _);
                 if (data == null)
                 {
                     sb.AppendLine("Commit hash:\t" + hash);
                     return sb.ToString();
                 }
 
-                string header = data.GetHeaderPlain();
+                string header = PlainCommitDataHeaderRenderer.RenderPlain(data);
                 string body = "\n" + data.Body.Trim();
                 sb.AppendLine(header);
                 sb.Append(body);
             }
             else
+            {
                 sb.AppendLine("Commit hash:\t" + hash);
+            }
+
             return sb.ToString();
         }
 
-        public static string ProcessSubmodulePatch(GitModule module, string fileName, PatchApply.Patch patch)
+        public static string ProcessSubmodulePatch(GitModule module, string fileName, Patch patch)
         {
-            string text = patch != null ? patch.Text : null;
-            var status = GitCommandHelpers.GetSubmoduleStatus(text, module, fileName);
+            string text = patch?.Text;
+            var status = GitCommandHelpers.ParseSubmoduleStatus(text, module, fileName);
             if (status == null)
+            {
                 return "";
+            }
+
             return ProcessSubmoduleStatus(module, status);
         }
 
         public static string ProcessSubmoduleStatus([NotNull] GitModule module, [NotNull] GitSubmoduleStatus status)
         {
             if (module == null)
-                throw new ArgumentNullException("module");
+            {
+                throw new ArgumentNullException(nameof(module));
+            }
+
             if (status == null)
-                throw new ArgumentNullException("status");
-            GitModule gitmodule = module.GetSubmodule(status.Name);
-            StringBuilder sb = new StringBuilder();
+            {
+                throw new ArgumentNullException(nameof(status));
+            }
+
+            GitModule gitModule = module.GetSubmodule(status.Name);
+            var sb = new StringBuilder();
             sb.AppendLine("Submodule " + status.Name + " Change");
 
+            // TEMP, will be moved in the follow up refactor
+            ICommitDataManager commitDataManager = new CommitDataManager(() => gitModule);
+
             sb.AppendLine();
-            sb.AppendLine("From:\t" + (status.OldCommit ?? "null"));
+            sb.AppendLine("From:\t" + (status.OldCommit?.ToString() ?? "null"));
             CommitData oldCommitData = null;
-            if (gitmodule.IsValidGitWorkingDir())
+            if (gitModule.IsValidGitWorkingDir())
             {
-                string error = "";
                 if (status.OldCommit != null)
-                    oldCommitData = CommitData.GetCommitData(gitmodule, status.OldCommit, ref error);
+                {
+                    oldCommitData = commitDataManager.GetCommitData(status.OldCommit.ToString(), out _);
+                }
+
                 if (oldCommitData != null)
                 {
                     sb.AppendLine("\t\t\t\t\t" + GetRelativeDateString(DateTime.UtcNow, oldCommitData.CommitDate.UtcDateTime) + " (" + GetFullDateString(oldCommitData.CommitDate) + ")");
-                    var delim = new char[] { '\n', '\r' };
-                    var lines = oldCommitData.Body.Trim(delim).Split(new string[] { "\r\n" }, 0);
-                    foreach (var curline in lines)
-                        sb.AppendLine("\t\t" + curline);
+                    var delimiter = new[] { '\n', '\r' };
+                    var lines = oldCommitData.Body.Trim(delimiter).Split(new[] { "\r\n" }, 0);
+                    foreach (var line in lines)
+                    {
+                        sb.AppendLine("\t\t" + line);
+                    }
                 }
             }
             else
+            {
                 sb.AppendLine();
+            }
 
             sb.AppendLine();
             string dirty = !status.IsDirty ? "" : " (dirty)";
-            sb.AppendLine("To:\t\t" + (status.Commit ?? "null") + dirty);
+            sb.AppendLine("To:\t\t" + (status.Commit?.ToString() ?? "null") + dirty);
             CommitData commitData = null;
-            if (gitmodule.IsValidGitWorkingDir())
+            if (gitModule.IsValidGitWorkingDir())
             {
-                string error = "";
                 if (status.Commit != null)
-                    commitData = CommitData.GetCommitData(gitmodule, status.Commit, ref error);
+                {
+                    commitData = commitDataManager.GetCommitData(status.Commit.ToString(), out _);
+                }
+
                 if (commitData != null)
                 {
                     sb.AppendLine("\t\t\t\t\t" + GetRelativeDateString(DateTime.UtcNow, commitData.CommitDate.UtcDateTime) + " (" + GetFullDateString(commitData.CommitDate) + ")");
-                    var delim = new char[] { '\n', '\r' };
-                    var lines = commitData.Body.Trim(delim).Split(new string[] { "\r\n" }, 0);
-                    foreach (var curline in lines)
-                        sb.AppendLine("\t\t" + curline);
+                    var delimiter = new[] { '\n', '\r' };
+                    var lines = commitData.Body.Trim(delimiter).Split(new[] { "\r\n" }, 0);
+                    foreach (var line in lines)
+                    {
+                        sb.AppendLine("\t\t" + line);
+                    }
                 }
             }
             else
+            {
                 sb.AppendLine();
+            }
 
             sb.AppendLine();
-            var submoduleStatus = gitmodule.CheckSubmoduleStatus(status.Commit, status.OldCommit, commitData, oldCommitData);
+            var submoduleStatus = gitModule.CheckSubmoduleStatus(status.Commit, status.OldCommit, commitData, oldCommitData);
             sb.Append("Type: ");
             switch (submoduleStatus)
             {
@@ -189,11 +229,15 @@ namespace ResourceManager
                     sb.Append(status.RemovedCommits + " removed");
 
                     if (status.AddedCommits > 0)
+                    {
                         sb.Append(", ");
+                    }
                 }
 
                 if (status.AddedCommits > 0)
+                {
                     sb.Append(status.AddedCommits + " added");
+                }
 
                 sb.AppendLine();
             }
@@ -202,16 +246,16 @@ namespace ResourceManager
             {
                 if (status.IsDirty)
                 {
-                    string statusText = gitmodule.GetStatusText(false);
-                    if (!String.IsNullOrEmpty(statusText))
+                    string statusText = gitModule.GetStatusText(untracked: false);
+                    if (!string.IsNullOrEmpty(statusText))
                     {
                         sb.AppendLine("\nStatus:");
                         sb.Append(statusText);
                     }
                 }
 
-                string diffs = gitmodule.GetDiffFilesText(status.OldCommit, status.Commit);
-                if (!String.IsNullOrEmpty(diffs))
+                string diffs = gitModule.GetDiffFilesText(status.OldCommit.ToString(), status.Commit.ToString());
+                if (!string.IsNullOrEmpty(diffs))
                 {
                     sb.AppendLine("\nDifferences:");
                     sb.Append(diffs);

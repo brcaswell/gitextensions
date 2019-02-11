@@ -4,78 +4,35 @@ using System.Xml.Serialization;
 
 namespace ResourceManager.Xliff
 {
-    [DebuggerDisplay("{_name}")]
+    [DebuggerDisplay("{" + nameof(Name) + "}")]
     public class TranslationCategory : IComparable<TranslationCategory>
     {
         public TranslationCategory()
         {
         }
 
-        public TranslationCategory(string name, string source)
+        public TranslationCategory(string name, string sourceLanguage, string targetLanguage = null)
         {
-            this._name = name;
-            this._source = source;
+            Name = name;
+            SourceLanguage = sourceLanguage;
+            TargetLanguage = targetLanguage;
         }
 
-        private string _datatype = "plaintext";
         [XmlAttribute("datatype")]
-        public string Datatype
-        {
-            get
-            {
-                return _datatype;
-            }
-            set
-            {
-                _datatype = value;
-            }
-        }
+        public string DataType { get; set; } = "plaintext";
 
-        private string _name;
         [XmlAttribute("original")]
-        public string Name
-        {
-            get
-            {
-                return _name;
-            }
-            set
-            {
-                _name = value;
-            }
-        }
+        public string Name { get; set; }
 
-        private string _source;
         [XmlAttribute("source-language")]
-        public string Source
-        {
-            get
-            {
-                return _source;
-            }
-            set
-            {
-                _source = value;
-            }
-        }
+        public string SourceLanguage { get; set; }
 
-        private TranslationBody _body = new TranslationBody();
+        [XmlAttribute("target-language")]
+        public string TargetLanguage { get; set; }
+
         [XmlElement(ElementName = "body")]
-        public TranslationBody Body
-        {
-            get
-            {
-                return _body;
-            }
-            set
-            {
-                _body = value;
-            }
-        }
+        public TranslationBody Body { get; set; } = new TranslationBody();
 
-        public int CompareTo(TranslationCategory other)
-        {
-            return Name.CompareTo(other.Name);
-        }
+        public int CompareTo(TranslationCategory other) => StringComparer.InvariantCulture.Compare(Name, other.Name);
     }
 }

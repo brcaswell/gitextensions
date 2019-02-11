@@ -1,30 +1,34 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Windows.Forms;
+﻿using System.Windows.Forms;
+using GitCommands;
+using GitUIPluginInterfaces;
 
 namespace GitUI.CommandsDialogs.SettingsDialog
 {
     public class SettingsPageWithHeader : SettingsPageBase, IGlobalSettingsPage
     {
-        private SettingsPageHeader header;
+        private SettingsPageHeader _header;
 
         public override Control GuiControl
         {
             get
             {
-                if (header == null)
+                if (_header == null)
                 {
-                    header = new SettingsPageHeader(this);
+                    _header = new SettingsPageHeader(this);
                 }
 
-                return header;
+                return _header;
             }
         }
 
         public virtual void SetGlobalSettings()
-        {        
+        {
+        }
+
+        protected override bool AreEffectiveSettings => true;
+        protected override ISettingsSource GetCurrentSettings()
+        {
+            return AppSettings.SettingsContainer;
         }
     }
 }

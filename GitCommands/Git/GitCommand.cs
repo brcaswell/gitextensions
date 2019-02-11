@@ -1,53 +1,38 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using GitUIPluginInterfaces;
 
 namespace GitCommands
 {
-
     /// <summary>
     /// Base class for structured git command
     /// here we can introduce methods which can operate on command structure
     /// instead of command string
     /// </summary>
-    public abstract class GitCommand
+    public abstract class GitCommand : IGitCommand
     {
-        /// <summary>
-        /// here commands should add theirs arguments
-        /// </summary>
-        public abstract IEnumerable<string> CollectArguments();
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <returns>name of git command eg. push, pull</returns>
-        public abstract string GitComandName();
-
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <returns>if command accesses remote repository</returns>
-        public abstract bool AccessesRemote();
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <returns>true if repo state changes after executing this command</returns>
-        public abstract bool ChangesRepoState();
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <returns>git command arguments as single line</returns>
-        public virtual string ToLine()
+        public string Arguments
         {
-            return GitComandName() + " " + CollectArguments().Join(" ");
+            get
+            {
+                Validate();
+                return BuildArguments().ToString();
+            }
         }
 
-        public override string ToString()
-        {
-            return ToLine();
-        }
+        protected abstract ArgumentString BuildArguments();
 
+        /// <value>Gets whether this command accesses a remote repository.</value>
+        public abstract bool AccessesRemote { get; }
+
+        /// <value>Gets whether executing this command will change the repo state.</value>
+        public abstract bool ChangesRepoState { get; }
+
+        public override string ToString() => BuildArguments().ToString();
+
+        /// <summary>
+        /// Validates if the supplied arguments are correct.
+        /// </summary>
+        public virtual void Validate()
+        {
+        }
     }
 }

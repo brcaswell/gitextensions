@@ -1,14 +1,8 @@
-﻿namespace GitUI
+﻿using System.Diagnostics;
+using System.Windows.Forms;
+using Microsoft.WindowsAPICodePack.Dialogs;
+namespace GitUI
 {
-    using System.Diagnostics;
-    using System.Text.RegularExpressions;
-    using System.Windows.Forms;
-
-    using Microsoft.Win32;
-#if !__MonoCS__
-    using Microsoft.WindowsAPICodePack.Dialogs;
-#endif
-
     public static class OsShellUtil
     {
         public static void OpenAs(string file)
@@ -37,13 +31,9 @@
         /// </summary>
         public static void OpenUrlInDefaultBrowser(string url)
         {
-            // Process.Start(url); / does not work with anchors: http://stackoverflow.com/questions/2404449/process-starturl-with-anchor-in-the-url
-            var openSubKey = Registry.ClassesRoot.OpenSubKey(@"\http\shell\open\command\");
-            if (openSubKey != null)
+            if (!string.IsNullOrWhiteSpace(url))
             {
-                var browserRegistryString  = openSubKey.GetValue("").ToString();
-                var defaultBrowserPath = Regex.Match(browserRegistryString, @"(\"".*?\"")").Captures[0].ToString();
-                Process.Start(defaultBrowserPath, url);
+                Process.Start(url);
             }
         }
 
@@ -55,7 +45,6 @@
         /// <returns>The path selected by the user, or null if the user cancels the dialog.</returns>
         public static string PickFolder(IWin32Window ownerWindow, string selectedPath = null)
         {
-#if !__MonoCS__
             if (GitCommands.Utils.EnvUtils.IsWindowsVistaOrGreater())
             {
                 // use Vista+ dialog
@@ -64,31 +53,36 @@
                     dialog.IsFolderPicker = true;
 
                     if (selectedPath != null)
+                    {
                         dialog.InitialDirectory = selectedPath;
+                    }
 
                     var result = dialog.ShowDialog(ownerWindow.Handle);
 
                     if (result == CommonFileDialogResult.Ok)
+                    {
                         return dialog.FileName;
+                    }
                 }
             }
             else
             {
-#endif
                 // use XP-era dialog
                 using (var dialog = new FolderBrowserDialog())
                 {
                     if (selectedPath != null)
+                    {
                         dialog.SelectedPath = selectedPath;
+                    }
 
                     var result = dialog.ShowDialog(ownerWindow);
 
                     if (result == DialogResult.OK)
+                    {
                         return dialog.SelectedPath;
+                    }
                 }
-#if !__MonoCS__
             }
-#endif
 
             // return null if the user cancelled
             return null;

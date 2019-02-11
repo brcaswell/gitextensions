@@ -121,6 +121,7 @@
                 <Strings>
                     <CommandName>GitExt.Commit</CommandName>
                     <ButtonText>&amp;Commit</ButtonText>
+                  <ToolTipText>Commit changes</ToolTipText>
                 </Strings>
             </Button>
             <Button guid="guidGitExtensionsPackageCmdSet" id="gitExtPullCommand" priority="0x0002" type="Button">
@@ -198,6 +199,14 @@
                 <Strings>
                     <CommandName>GitExt.ViewChanges</CommandName>
                     <ButtonText>V&amp;iew changes</ButtonText>
+                </Strings>
+            </Button>
+            <Button guid="guidGitExtensionsPackageCmdSet" id="gitExtBlameCommand" priority="0x0002" type="Button">
+                <Parent guid="guidGitExtensionsPackageCmdSet" id="gitExtMenuFindGroup" />
+                <Icon guid="guidImages" id="blame"/>
+                <Strings>
+                    <CommandName>GitExt.Blame</CommandName>
+                    <ButtonText>Blame</ButtonText>
                 </Strings>
             </Button>
             <Button guid="guidGitExtensionsPackageCmdSet" id="gitExtFindFileCommand" priority="0x0003" type="Button">
@@ -315,7 +324,7 @@
             inside a button definition. An important aspect of this declaration is that the element id
             must be the actual index (1-based) of the bitmap inside the bitmap strip. -->
             <Bitmap guid="guidImages" href="Resources\Commands.png"/>
-            <!--<Bitmap guid="guidImages" href="Resources\Commands.png" usedList="edit, configure, stash, reset, editAll, history, commit, push, pull, createBranch, unused, browse, new, clone, cherry, checkout, remotes, merge, rebase, info, bash, gitignore, find, diff"/>-->
+            <!--<Bitmap guid="guidImages" href="Resources\Commands.png" usedList="edit, configure, stash, reset, editAll, history, commit, push, pull, createBranch, unused, browse, new, clone, cherry, checkout, remotes, merge, rebase, info, bash, gitignore, find, diff, blame"/>-->
         </Bitmaps>
     </Commands>
 
@@ -384,6 +393,7 @@
             <IDSymbol name="gitExtBashCommand" value="0x1116" />
             <IDSymbol name="gitExtSettingsCommand" value="0x1117" />
             <IDSymbol name="gitExtAboutCommand" value="0x1118" />
+            <IDSymbol name="gitExtBlameCommand" value="0x1119"/>
         </GuidSymbol>
 
         <GuidSymbol name="guidImages" value="{8bcce2c8-daec-4814-878e-e9c346d42f24}" >
@@ -411,6 +421,7 @@
             <IDSymbol name="gitignore" value="22" />
             <IDSymbol name="find" value="23" />
             <IDSymbol name="diff" value="24" />
+            <IDSymbol name="blame" value="25" />
         </GuidSymbol>
     </Symbols>
 </CommandTable>

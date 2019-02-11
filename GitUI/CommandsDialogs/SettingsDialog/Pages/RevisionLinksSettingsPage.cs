@@ -1,45 +1,41 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Drawing;
-using System.Data;
-using System.Linq;
-using System.Text;
-using System.Windows.Forms;
-using GitCommands;
-using GitCommands.GitExtLinks;
+using GitCommands.ExternalLinks;
+using GitExtUtils.GitUI;
+using JetBrains.Annotations;
 
 namespace GitUI.CommandsDialogs.SettingsDialog.Pages
 {
-    public partial class RevisionLinksSettingsPage : RepoDistSettingsPage
+    public sealed partial class RevisionLinksSettingsPage : RepoDistSettingsPage
     {
-        private GitExtLinksParser parser;
+        private ExternalLinksManager _externalLinksManager;
 
         public RevisionLinksSettingsPage()
         {
             InitializeComponent();
+            CaptionCol.Width = DpiUtil.Scale(150);
             Text = "Revision links";
-            Translate();
+            InitializeComplete();
             LinksGrid.AutoGenerateColumns = false;
+            CaptionCol.DataPropertyName = nameof(ExternalLinkFormat.Caption);
+            URICol.DataPropertyName = nameof(ExternalLinkFormat.Format);
         }
 
-        protected override void  SettingsToPage() 	
+        protected override void SettingsToPage()
         {
-            parser = new GitExtLinksParser(CurrentSettings);
+            _externalLinksManager = new ExternalLinksManager(CurrentSettings);
+
             ReloadCategories();
             if (_NO_TRANSLATE_Categories.Items.Count > 0)
             {
                 _NO_TRANSLATE_Categories.SelectedIndex = 0;
             }
+
             CategoryChanged();
         }
 
         protected override void PageToSettings()
         {
-            if (parser != null)
-            {
-                parser.SaveToSettings();
-            }
+            _externalLinksManager.Save();
         }
 
         public static SettingsPageReference GetPageReference()
@@ -54,25 +50,19 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
 
         private void ReloadCategories()
         {
+            var effectiveLinkDefinitions = _externalLinksManager.GetEffectiveSettings();
+
             _NO_TRANSLATE_Categories.DataSource = null;
-            if (parser != null)
-            {
-                _NO_TRANSLATE_Categories.DisplayMember = "Name";
-                _NO_TRANSLATE_Categories.DataSource = parser.EffectiveLinkDefs;
-            }
+            _NO_TRANSLATE_Categories.DisplayMember = nameof(ExternalLinkDefinition.Name);
+            _NO_TRANSLATE_Categories.DataSource = effectiveLinkDefinitions;
         }
 
-        private GitExtLinkDef SelectedCategory
-        {
-            get
-            {
-                return _NO_TRANSLATE_Categories.SelectedItem as GitExtLinkDef;
-            }
-        }
+        [CanBeNull]
+        private ExternalLinkDefinition SelectedLinkDefinition => _NO_TRANSLATE_Categories.SelectedItem as ExternalLinkDefinition;
 
         private void CategoryChanged()
         {
-            if (SelectedCategory == null)
+            if (SelectedLinkDefinition == null)
             {
                 splitContainer1.Panel2.Enabled = false;
                 _NO_TRANSLATE_Name.Text = string.Empty;
@@ -82,42 +72,61 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
                 RemoteBranchChx.Checked = false;
                 _NO_TRANSLATE_SearchPatternEdit.Text = string.Empty;
                 _NO_TRANSLATE_NestedPatternEdit.Text = string.Empty;
+                _NO_TRANSLATE_RemotePatern.Text = string.Empty;
+                _NO_TRANSLATE_UseRemotes.Text = string.Empty;
+                chkOnlyFirstRemote.Checked = false;
+                chxURL.Checked = false;
+                chxPushURL.Checked = false;
                 LinksGrid.DataSource = null;
             }
             else
             {
                 splitContainer1.Panel2.Enabled = true;
-                _NO_TRANSLATE_Name.Text = SelectedCategory.Name;
-                EnabledChx.Checked = SelectedCategory.Enabled;
-                MessageChx.Checked = SelectedCategory.SearchInParts.Contains(GitExtLinkDef.RevisionPart.Message);
-                LocalBranchChx.Checked = SelectedCategory.SearchInParts.Contains(GitExtLinkDef.RevisionPart.LocalBranches);
-                RemoteBranchChx.Checked = SelectedCategory.SearchInParts.Contains(GitExtLinkDef.RevisionPart.RemoteBranches);
-                _NO_TRANSLATE_SearchPatternEdit.Text = SelectedCategory.SearchPattern;
-                _NO_TRANSLATE_NestedPatternEdit.Text = SelectedCategory.NestedSearchPattern;
-                LinksGrid.DataSource = SelectedCategory.LinkFormats;
+                _NO_TRANSLATE_Name.Text = SelectedLinkDefinition.Name;
+                EnabledChx.Checked = SelectedLinkDefinition.Enabled;
+                MessageChx.Checked = SelectedLinkDefinition.SearchInParts.Contains(ExternalLinkDefinition.RevisionPart.Message);
+                LocalBranchChx.Checked = SelectedLinkDefinition.SearchInParts.Contains(ExternalLinkDefinition.RevisionPart.LocalBranches);
+                RemoteBranchChx.Checked = SelectedLinkDefinition.SearchInParts.Contains(ExternalLinkDefinition.RevisionPart.RemoteBranches);
+                _NO_TRANSLATE_SearchPatternEdit.Text = SelectedLinkDefinition.SearchPattern;
+                _NO_TRANSLATE_NestedPatternEdit.Text = SelectedLinkDefinition.NestedSearchPattern;
+                _NO_TRANSLATE_RemotePatern.Text = SelectedLinkDefinition.RemoteSearchPattern;
+                chxURL.Checked = SelectedLinkDefinition.RemoteSearchInParts.Contains(ExternalLinkDefinition.RemotePart.URL);
+                chxPushURL.Checked = SelectedLinkDefinition.RemoteSearchInParts.Contains(ExternalLinkDefinition.RemotePart.PushURL);
+                _NO_TRANSLATE_UseRemotes.Text = SelectedLinkDefinition.UseRemotesPattern;
+                chkOnlyFirstRemote.Checked = SelectedLinkDefinition.UseOnlyFirstRemote;
+                LinksGrid.DataSource = SelectedLinkDefinition.LinkFormats;
             }
         }
 
         private void Add_Click(object sender, EventArgs e)
         {
-            GitExtLinkDef newCategory = new GitExtLinkDef();
-            newCategory.Name = "<new>";
-            newCategory.SearchInParts.Add(GitExtLinkDef.RevisionPart.Message);
-            newCategory.Enabled = true;
-            parser.AddLinkDef(newCategory);
+            var definition = new ExternalLinkDefinition
+            {
+                Name = "<new>",
+                Enabled = true,
+                UseRemotesPattern = "upstream|origin",
+                UseOnlyFirstRemote = true
+            };
+            definition.SearchInParts.Add(ExternalLinkDefinition.RevisionPart.Message);
+            definition.RemoteSearchInParts.Add(ExternalLinkDefinition.RemotePart.URL);
+            _externalLinksManager.Add(definition);
+
             ReloadCategories();
-            _NO_TRANSLATE_Categories.SelectedItem = newCategory;
-            CategoryChanged();           
+            _NO_TRANSLATE_Categories.SelectedItem = definition;
+            CategoryChanged();
         }
 
         private void Remove_Click(object sender, EventArgs e)
         {
-            if (SelectedCategory == null)
+            if (SelectedLinkDefinition == null)
+            {
                 return;
+            }
 
             int idx = _NO_TRANSLATE_Categories.SelectedIndex;
 
-            parser.RemoveLinkDef(SelectedCategory);
+            _externalLinksManager.Remove(SelectedLinkDefinition);
+
             ReloadCategories();
 
             if (idx >= 0)
@@ -130,9 +139,9 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
 
         private void _NO_TRANSLATE_Name_Leave(object sender, EventArgs e)
         {
-            if (SelectedCategory != null)
+            if (SelectedLinkDefinition != null)
             {
-                var selected = SelectedCategory;
+                var selected = SelectedLinkDefinition;
                 selected.Name = _NO_TRANSLATE_Name.Text;
                 ReloadCategories();
                 _NO_TRANSLATE_Categories.SelectedItem = selected;
@@ -141,71 +150,124 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
 
         private void EnabledChx_CheckedChanged(object sender, EventArgs e)
         {
-            if (SelectedCategory != null)
+            if (SelectedLinkDefinition != null)
             {
-                SelectedCategory.Enabled = EnabledChx.Checked;
+                SelectedLinkDefinition.Enabled = EnabledChx.Checked;
             }
         }
 
         private void MessageChx_CheckedChanged(object sender, EventArgs e)
         {
-
-            if (SelectedCategory != null)
+            if (SelectedLinkDefinition != null)
             {
                 if (MessageChx.Checked)
                 {
-                    SelectedCategory.SearchInParts.Add(GitExtLinkDef.RevisionPart.Message);
+                    SelectedLinkDefinition.SearchInParts.Add(ExternalLinkDefinition.RevisionPart.Message);
                 }
                 else
                 {
-                    SelectedCategory.SearchInParts.Remove(GitExtLinkDef.RevisionPart.Message);
+                    SelectedLinkDefinition.SearchInParts.Remove(ExternalLinkDefinition.RevisionPart.Message);
                 }
             }
         }
 
         private void _NO_TRANSLATE_SearchPatternEdit_Leave(object sender, EventArgs e)
         {
-            if (SelectedCategory != null)
+            if (SelectedLinkDefinition != null)
             {
-                SelectedCategory.SearchPattern = _NO_TRANSLATE_SearchPatternEdit.Text.Trim();
+                SelectedLinkDefinition.SearchPattern = _NO_TRANSLATE_SearchPatternEdit.Text.Trim();
             }
         }
 
         private void _NO_TRANSLATE_NestedPatternEdit_Leave(object sender, EventArgs e)
         {
-            if (SelectedCategory != null)
+            if (SelectedLinkDefinition != null)
             {
-                SelectedCategory.NestedSearchPattern = _NO_TRANSLATE_NestedPatternEdit.Text.Trim();
+                SelectedLinkDefinition.NestedSearchPattern = _NO_TRANSLATE_NestedPatternEdit.Text.Trim();
             }
         }
 
         private void LocalBranchChx_CheckedChanged(object sender, EventArgs e)
         {
-            if (SelectedCategory != null)
+            if (SelectedLinkDefinition != null)
             {
                 if (LocalBranchChx.Checked)
                 {
-                    SelectedCategory.SearchInParts.Add(GitExtLinkDef.RevisionPart.LocalBranches);
+                    SelectedLinkDefinition.SearchInParts.Add(ExternalLinkDefinition.RevisionPart.LocalBranches);
                 }
                 else
                 {
-                    SelectedCategory.SearchInParts.Remove(GitExtLinkDef.RevisionPart.LocalBranches);
+                    SelectedLinkDefinition.SearchInParts.Remove(ExternalLinkDefinition.RevisionPart.LocalBranches);
                 }
             }
         }
 
         private void RemoteBranchChx_CheckedChanged(object sender, EventArgs e)
         {
-            if (SelectedCategory != null)
+            if (SelectedLinkDefinition != null)
             {
                 if (RemoteBranchChx.Checked)
                 {
-                    SelectedCategory.SearchInParts.Add(GitExtLinkDef.RevisionPart.RemoteBranches);
+                    SelectedLinkDefinition.SearchInParts.Add(ExternalLinkDefinition.RevisionPart.RemoteBranches);
                 }
                 else
                 {
-                    SelectedCategory.SearchInParts.Remove(GitExtLinkDef.RevisionPart.RemoteBranches);
+                    SelectedLinkDefinition.SearchInParts.Remove(ExternalLinkDefinition.RevisionPart.RemoteBranches);
                 }
+            }
+        }
+
+        private void _NO_TRANSLATE_RemotePatern_Leave(object sender, EventArgs e)
+        {
+            if (SelectedLinkDefinition != null)
+            {
+                SelectedLinkDefinition.RemoteSearchPattern = _NO_TRANSLATE_RemotePatern.Text.Trim();
+            }
+        }
+
+        private void chxURL_CheckedChanged(object sender, EventArgs e)
+        {
+            if (SelectedLinkDefinition != null)
+            {
+                if (chxURL.Checked)
+                {
+                    SelectedLinkDefinition.RemoteSearchInParts.Add(ExternalLinkDefinition.RemotePart.URL);
+                }
+                else
+                {
+                    SelectedLinkDefinition.RemoteSearchInParts.Remove(ExternalLinkDefinition.RemotePart.URL);
+                }
+            }
+        }
+
+        private void chxPushURL_CheckedChanged(object sender, EventArgs e)
+        {
+            if (SelectedLinkDefinition != null)
+            {
+                if (chxPushURL.Checked)
+                {
+                    SelectedLinkDefinition.RemoteSearchInParts.Add(ExternalLinkDefinition.RemotePart.PushURL);
+                }
+                else
+                {
+                    SelectedLinkDefinition.RemoteSearchInParts.Remove(ExternalLinkDefinition.RemotePart.PushURL);
+                }
+            }
+        }
+
+        private void _NO_TRANSLATE_UseRemotes_Leave(object sender, EventArgs e)
+        {
+            if (SelectedLinkDefinition != null)
+            {
+                SelectedLinkDefinition.UseRemotesPattern = _NO_TRANSLATE_UseRemotes.Text.Trim();
+            }
+        }
+
+        private void chkOnlyFirstRemote_CheckedChanged(object sender, EventArgs e)
+        {
+            if (SelectedLinkDefinition != null)
+            {
+                SelectedLinkDefinition.UseOnlyFirstRemote = chkOnlyFirstRemote.Checked;
             }
         }
     }

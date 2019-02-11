@@ -1,4 +1,6 @@
-﻿namespace GitUI.CommandsDialogs
+﻿using GitCommands.Git;
+
+namespace GitUI.CommandsDialogs
 {
     partial class FormResolveConflicts
     {
@@ -69,26 +71,17 @@
             this.openMergeToolBtn = new System.Windows.Forms.Button();
             this.Rescan = new System.Windows.Forms.Button();
             this.Reset = new System.Windows.Forms.Button();
-            this.guidDataGridViewTextBoxColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.commitGuidDataGridViewTextBoxColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.itemTypeDataGridViewTextBoxColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.nameDataGridViewTextBoxColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.authorDataGridViewTextBoxColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.dateDataGridViewTextBoxColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.fileNameDataGridViewTextBoxColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.modeDataGridViewTextBoxColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.subItemsBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.tableLayoutPanel4 = new System.Windows.Forms.TableLayoutPanel();
             this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
             this.tableLayoutPanel5 = new System.Windows.Forms.TableLayoutPanel();
             this.gotoUserManualControl1 = new GitUI.UserControls.GotoUserManualControl();
+            this.progressBar = new System.Windows.Forms.ProgressBar();
             ((System.ComponentModel.ISupportInitialize)(this.ConflictedFiles)).BeginInit();
             this.ConflictedFilesContextMenu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.gitItemBindingSource)).BeginInit();
             this.tableLayoutPanel1.SuspendLayout();
             this.tableLayoutPanel3.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.subItemsBindingSource)).BeginInit();
             this.tableLayoutPanel4.SuspendLayout();
             this.flowLayoutPanel1.SuspendLayout();
             this.tableLayoutPanel5.SuspendLayout();
@@ -119,7 +112,6 @@
             this.ConflictedFiles.DataSource = this.gitItemBindingSource;
             this.ConflictedFiles.Dock = System.Windows.Forms.DockStyle.Fill;
             this.ConflictedFiles.Location = new System.Drawing.Point(3, 19);
-            this.ConflictedFiles.MultiSelect = false;
             this.ConflictedFiles.Name = "ConflictedFiles";
             this.ConflictedFiles.ReadOnly = true;
             this.ConflictedFiles.RowHeadersVisible = false;
@@ -134,14 +126,12 @@
             // FileName
             // 
             this.FileName.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
-            this.FileName.DataPropertyName = "FileName";
             this.FileName.HeaderText = "Filename";
             this.FileName.Name = "FileName";
             this.FileName.ReadOnly = true;
             // 
             // authorDataGridViewTextBoxColumn1
             // 
-            this.authorDataGridViewTextBoxColumn1.DataPropertyName = "Author";
             this.authorDataGridViewTextBoxColumn1.HeaderText = "Author";
             this.authorDataGridViewTextBoxColumn1.Name = "authorDataGridViewTextBoxColumn1";
             this.authorDataGridViewTextBoxColumn1.ReadOnly = true;
@@ -301,7 +291,7 @@
             // 
             // gitItemBindingSource
             // 
-            this.gitItemBindingSource.DataSource = typeof(GitCommands.GitItem);
+            this.gitItemBindingSource.DataSource = typeof(GitItem);
             // 
             // tableLayoutPanel1
             // 
@@ -411,7 +401,7 @@
             // merge
             // 
             this.merge.ContextMenuStrip = this.ConflictedFilesContextMenu;
-            this.merge.Image = global::GitUI.Properties.Resources.Select;
+            this.merge.Image = global::GitUI.Properties.Images.Select;
             this.merge.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.merge.Location = new System.Drawing.Point(331, 0);
             this.merge.Margin = new System.Windows.Forms.Padding(0, 0, 0, 2);
@@ -433,12 +423,11 @@
             this.conflictDescription.Size = new System.Drawing.Size(64, 16);
             this.conflictDescription.TabIndex = 2;
             this.conflictDescription.Text = "Select file";
-            this.conflictDescription.Click += new System.EventHandler(this.conflictDescription_Click);
             // 
             // pictureBox1
             // 
             this.pictureBox1.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            this.pictureBox1.BackgroundImage = global::GitUI.Properties.Resources.Info;
+            this.pictureBox1.BackgroundImage = global::GitUI.Properties.Images.Information;
             this.pictureBox1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.None;
             this.pictureBox1.Location = new System.Drawing.Point(0, 5);
             this.pictureBox1.Margin = new System.Windows.Forms.Padding(0);
@@ -473,7 +462,7 @@
             this.Rescan.Name = "Rescan";
             this.Rescan.Size = new System.Drawing.Size(140, 25);
             this.Rescan.TabIndex = 5;
-            this.Rescan.Text = "Rescan mergeconflicts";
+            this.Rescan.Text = "Rescan merge conflicts";
             this.Rescan.UseVisualStyleBackColor = true;
             this.Rescan.Click += new System.EventHandler(this.Rescan_Click);
             // 
@@ -486,67 +475,6 @@
             this.Reset.Text = "Abort";
             this.Reset.UseVisualStyleBackColor = true;
             this.Reset.Click += new System.EventHandler(this.Reset_Click);
-            // 
-            // guidDataGridViewTextBoxColumn
-            // 
-            this.guidDataGridViewTextBoxColumn.DataPropertyName = "Guid";
-            this.guidDataGridViewTextBoxColumn.HeaderText = "Guid";
-            this.guidDataGridViewTextBoxColumn.Name = "guidDataGridViewTextBoxColumn";
-            this.guidDataGridViewTextBoxColumn.ReadOnly = true;
-            // 
-            // commitGuidDataGridViewTextBoxColumn
-            // 
-            this.commitGuidDataGridViewTextBoxColumn.DataPropertyName = "CommitGuid";
-            this.commitGuidDataGridViewTextBoxColumn.HeaderText = "CommitGuid";
-            this.commitGuidDataGridViewTextBoxColumn.Name = "commitGuidDataGridViewTextBoxColumn";
-            this.commitGuidDataGridViewTextBoxColumn.ReadOnly = true;
-            // 
-            // itemTypeDataGridViewTextBoxColumn
-            // 
-            this.itemTypeDataGridViewTextBoxColumn.DataPropertyName = "ItemType";
-            this.itemTypeDataGridViewTextBoxColumn.HeaderText = "ItemType";
-            this.itemTypeDataGridViewTextBoxColumn.Name = "itemTypeDataGridViewTextBoxColumn";
-            this.itemTypeDataGridViewTextBoxColumn.ReadOnly = true;
-            // 
-            // nameDataGridViewTextBoxColumn
-            // 
-            this.nameDataGridViewTextBoxColumn.DataPropertyName = "Name";
-            this.nameDataGridViewTextBoxColumn.HeaderText = "Name";
-            this.nameDataGridViewTextBoxColumn.Name = "nameDataGridViewTextBoxColumn";
-            this.nameDataGridViewTextBoxColumn.ReadOnly = true;
-            // 
-            // authorDataGridViewTextBoxColumn
-            // 
-            this.authorDataGridViewTextBoxColumn.DataPropertyName = "Author";
-            this.authorDataGridViewTextBoxColumn.HeaderText = "Author";
-            this.authorDataGridViewTextBoxColumn.Name = "authorDataGridViewTextBoxColumn";
-            this.authorDataGridViewTextBoxColumn.ReadOnly = true;
-            // 
-            // dateDataGridViewTextBoxColumn
-            // 
-            this.dateDataGridViewTextBoxColumn.DataPropertyName = "Date";
-            this.dateDataGridViewTextBoxColumn.HeaderText = "Date";
-            this.dateDataGridViewTextBoxColumn.Name = "dateDataGridViewTextBoxColumn";
-            this.dateDataGridViewTextBoxColumn.ReadOnly = true;
-            // 
-            // fileNameDataGridViewTextBoxColumn
-            // 
-            this.fileNameDataGridViewTextBoxColumn.DataPropertyName = "FileName";
-            this.fileNameDataGridViewTextBoxColumn.HeaderText = "FileName";
-            this.fileNameDataGridViewTextBoxColumn.Name = "fileNameDataGridViewTextBoxColumn";
-            this.fileNameDataGridViewTextBoxColumn.ReadOnly = true;
-            // 
-            // modeDataGridViewTextBoxColumn
-            // 
-            this.modeDataGridViewTextBoxColumn.DataPropertyName = "Mode";
-            this.modeDataGridViewTextBoxColumn.HeaderText = "Mode";
-            this.modeDataGridViewTextBoxColumn.Name = "modeDataGridViewTextBoxColumn";
-            this.modeDataGridViewTextBoxColumn.ReadOnly = true;
-            // 
-            // subItemsBindingSource
-            // 
-            this.subItemsBindingSource.DataMember = "SubItems";
-            this.subItemsBindingSource.DataSource = this.gitItemBindingSource;
             // 
             // tableLayoutPanel4
             // 
@@ -574,6 +502,7 @@
             this.flowLayoutPanel1.Controls.Add(this.startMergetool);
             this.flowLayoutPanel1.Controls.Add(this.Rescan);
             this.flowLayoutPanel1.Controls.Add(this.Reset);
+            this.flowLayoutPanel1.Controls.Add(this.progressBar);
             this.flowLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.flowLayoutPanel1.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.flowLayoutPanel1.Location = new System.Drawing.Point(470, 3);
@@ -581,6 +510,16 @@
             this.flowLayoutPanel1.Size = new System.Drawing.Size(146, 290);
             this.flowLayoutPanel1.TabIndex = 0;
             this.flowLayoutPanel1.WrapContents = false;
+            // 
+            // progressBar
+            // 
+            this.progressBar.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.progressBar.Location = new System.Drawing.Point(3, 127);
+            this.progressBar.Name = "progressBar";
+            this.progressBar.Size = new System.Drawing.Size(140, 24);
+            this.progressBar.TabIndex = 7;
+            this.progressBar.Visible = false;
             // 
             // tableLayoutPanel5
             // 
@@ -633,14 +572,12 @@
             this.tableLayoutPanel3.ResumeLayout(false);
             this.tableLayoutPanel3.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.subItemsBindingSource)).EndInit();
             this.tableLayoutPanel4.ResumeLayout(false);
             this.tableLayoutPanel4.PerformLayout();
             this.flowLayoutPanel1.ResumeLayout(false);
             this.tableLayoutPanel5.ResumeLayout(false);
             this.tableLayoutPanel5.PerformLayout();
             this.ResumeLayout(false);
-
         }
 
         #endregion
@@ -662,14 +599,6 @@
         private System.Windows.Forms.ToolStripMenuItem ContextSaveLocalAs;
         private System.Windows.Forms.ToolStripMenuItem ContextSaveRemoteAs;
         private System.Windows.Forms.ToolStripMenuItem ContextMarkAsSolved;
-        private System.Windows.Forms.DataGridViewTextBoxColumn guidDataGridViewTextBoxColumn;
-        private System.Windows.Forms.DataGridViewTextBoxColumn commitGuidDataGridViewTextBoxColumn;
-        private System.Windows.Forms.DataGridViewTextBoxColumn itemTypeDataGridViewTextBoxColumn;
-        private System.Windows.Forms.DataGridViewTextBoxColumn nameDataGridViewTextBoxColumn;
-        private System.Windows.Forms.DataGridViewTextBoxColumn authorDataGridViewTextBoxColumn;
-        private System.Windows.Forms.DataGridViewTextBoxColumn dateDataGridViewTextBoxColumn;
-        private System.Windows.Forms.DataGridViewTextBoxColumn fileNameDataGridViewTextBoxColumn;
-        private System.Windows.Forms.DataGridViewTextBoxColumn modeDataGridViewTextBoxColumn;
         private System.Windows.Forms.ToolStripSeparator toolStripMenuItem1;
         private System.Windows.Forms.ToolStripMenuItem openWithToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem openToolStripMenuItem;
@@ -689,7 +618,6 @@
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel3;
         private System.Windows.Forms.Button merge;
         private System.Windows.Forms.PictureBox pictureBox1;
-        private System.Windows.Forms.BindingSource subItemsBindingSource;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator4;
         private System.Windows.Forms.ToolStripMenuItem fileHistoryToolStripMenuItem;
         private System.Windows.Forms.DataGridViewTextBoxColumn FileName;
@@ -698,5 +626,6 @@
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel1;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel5;
         private UserControls.GotoUserManualControl gotoUserManualControl1;
+        private System.Windows.Forms.ProgressBar progressBar;
     }
 }

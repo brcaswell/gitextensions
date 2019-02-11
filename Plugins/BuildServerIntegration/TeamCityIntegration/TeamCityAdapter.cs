@@ -17,17 +17,19 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using System.Xml.XPath;
 using GitCommands.Utils;
+using GitUI;
 using GitUIPluginInterfaces;
 using GitUIPluginInterfaces.BuildServerIntegration;
+using JetBrains.Annotations;
+using Microsoft.VisualStudio.Threading;
 
 namespace TeamCityIntegration
 {
-
     [MetadataAttribute]
-    [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
-    public class TeamCityIntegrationMetadata : BuildServerAdapterMetadataAttribute
+    [AttributeUsage(AttributeTargets.Class)]
+    public class TeamCityIntegrationMetadataAttribute : BuildServerAdapterMetadataAttribute
     {
-        public TeamCityIntegrationMetadata(string buildServerType)
+        public TeamCityIntegrationMetadataAttribute(string buildServerType)
             : base(buildServerType)
         {
         }
@@ -37,95 +39,136 @@ namespace TeamCityIntegration
             get
             {
                 if (EnvUtils.IsNet4FullOrHigher())
+                {
                     return null;
+                }
                 else
+                {
                     return ".Net 4 full framework required";
+                }
             }
         }
     }
 
     [Export(typeof(IBuildServerAdapter))]
-    [TeamCityIntegrationMetadata("TeamCity")]
+    [TeamCityIntegrationMetadata(PluginName)]
     [PartCreationPolicy(CreationPolicy.NonShared)]
     internal class TeamCityAdapter : IBuildServerAdapter
     {
-        private IBuildServerWatcher buildServerWatcher;
+        public const string PluginName = "TeamCity";
+        private IBuildServerWatcher _buildServerWatcher;
 
-        private HttpClient httpClient;
+        private HttpClientHandler _httpClientHandler;
+        private HttpClient _httpClient;
 
-        private string httpClientHostSuffix;
+        private string _httpClientHostSuffix;
 
-        private List<Task<IEnumerable<string>>> getBuildTypesTask = new List<Task<IEnumerable<string>>>();
+        private readonly List<JoinableTask<IEnumerable<string>>> _getBuildTypesTask = new List<JoinableTask<IEnumerable<string>>>();
+
+        private CookieContainer _teamCityNtlmAuthCookie;
+
+        private string HostName { get; set; }
 
         private string[] ProjectNames { get; set; }
 
         private Regex BuildIdFilter { get; set; }
 
+        private CookieContainer GetTeamCityNtlmAuthCookie(string serverUrl, IBuildServerCredentials buildServerCredentials)
+        {
+            if (_teamCityNtlmAuthCookie != null)
+            {
+                return _teamCityNtlmAuthCookie;
+            }
+
+            string url = serverUrl + "ntlmLogin.html";
+            var cookieContainer = new CookieContainer();
+            var request = (HttpWebRequest)WebRequest.Create(url);
+            request.CookieContainer = cookieContainer;
+
+            if (buildServerCredentials != null
+                && !string.IsNullOrEmpty(buildServerCredentials.Username)
+                && !string.IsNullOrEmpty(buildServerCredentials.Password))
+            {
+                request.Credentials = new NetworkCredential(buildServerCredentials.Username, buildServerCredentials.Password);
+            }
+            else
+            {
+                request.Credentials = CredentialCache.DefaultCredentials;
+            }
+
+            request.PreAuthenticate = true;
+            request.GetResponse();
+
+            _teamCityNtlmAuthCookie = cookieContainer;
+            return _teamCityNtlmAuthCookie;
+        }
+
         public string LogAsGuestUrlParameter { get; set; }
 
-        public void Initialize(IBuildServerWatcher buildServerWatcher, ISettingsSource config)
+        public void Initialize(IBuildServerWatcher buildServerWatcher, ISettingsSource config, Func<ObjectId, bool> isCommitInRevisionGrid = null)
         {
-            if (this.buildServerWatcher != null)
+            if (_buildServerWatcher != null)
+            {
                 throw new InvalidOperationException("Already initialized");
+            }
 
-            this.buildServerWatcher = buildServerWatcher;
+            _buildServerWatcher = buildServerWatcher;
 
-            ProjectNames = config.GetString("ProjectName", "").Split(new char[]{'|'}, StringSplitOptions.RemoveEmptyEntries);
+            ProjectNames = buildServerWatcher.ReplaceVariables(config.GetString("ProjectName", ""))
+                .Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
 
             var buildIdFilerSetting = config.GetString("BuildIdFilter", "");
             if (!BuildServerSettingsHelper.IsRegexValid(buildIdFilerSetting))
             {
                 return;
             }
+
             BuildIdFilter = new Regex(buildIdFilerSetting, RegexOptions.Compiled);
-            var hostName = config.GetString("BuildServerUrl", null);
+            HostName = config.GetString("BuildServerUrl", null);
             LogAsGuestUrlParameter = config.GetBool("LogAsGuest", false) ? "&guest=1" : string.Empty;
 
-            if (!string.IsNullOrEmpty(hostName))
+            if (!string.IsNullOrEmpty(HostName))
             {
-                InitializeHttpClient(hostName, () => buildServerWatcher.GetBuildServerCredentials(this, true));
-
+                InitializeHttpClient(HostName);
                 if (ProjectNames.Length > 0)
                 {
-                    getBuildTypesTask.Clear();
+                    _getBuildTypesTask.Clear();
                     foreach (var name in ProjectNames)
                     {
-                        getBuildTypesTask.Add(
-                            GetProjectFromNameXmlResponseAsync(name, CancellationToken.None)
-                            .ContinueWith(
-                            task => from element in task.Result.XPathSelectElements("/project/buildTypes/buildType")
-                                   select element.Attribute("id").Value,
-                           TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.AttachedToParent));
+                        _getBuildTypesTask.Add(ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+                        {
+                            var response = await GetProjectFromNameXmlResponseAsync(name, CancellationToken.None).ConfigureAwait(false);
+                            return from element in response.XPathSelectElements("/project/buildTypes/buildType")
+                                   select element.Attribute("id").Value;
+                        }));
                     }
                 }
             }
         }
 
-        public void InitializeHttpClient(string hostName, Func<IBuildServerCredentials> getBuildServerCredentials = null)
+        public void InitializeHttpClient(string hostname)
         {
-            SetHttpClient(hostName);
-            UpdateHttpClientOptions(getBuildServerCredentials != null ? getBuildServerCredentials() : null);
+            CreateNewHttpClient(hostname);
+            UpdateHttpClientOptionsGuestAuth();
         }
 
-        private void SetHttpClient(string hostName)
+        private void CreateNewHttpClient(string hostName)
         {
-            httpClient = new HttpClient
+            _httpClientHandler = new HttpClientHandler();
+            _httpClient = new HttpClient(_httpClientHandler)
             {
                 Timeout = TimeSpan.FromMinutes(2),
                 BaseAddress = hostName.Contains("://")
                     ? new Uri(hostName, UriKind.Absolute)
                     : new Uri(string.Format("{0}://{1}", Uri.UriSchemeHttp, hostName), UriKind.Absolute)
             };
-            httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/xml"));
+            _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/xml"));
         }
 
         /// <summary>
         /// Gets a unique key which identifies this build server.
         /// </summary>
-        public string UniqueKey
-        {
-            get { return httpClient.BaseAddress.Host; }
-        }
+        public string UniqueKey => _httpClient.BaseAddress.Host;
 
         public IObservable<BuildInfo> GetFinishedBuildsSince(IScheduler scheduler, DateTime? sinceDate = null)
         {
@@ -139,13 +182,13 @@ namespace TeamCityIntegration
 
         public IObservable<BuildInfo> GetBuilds(IScheduler scheduler, DateTime? sinceDate = null, bool? running = null)
         {
-            if (httpClient == null || httpClient.BaseAddress == null || ProjectNames.Length == 0)
+            if (_httpClient == null || _httpClient.BaseAddress == null || ProjectNames.Length == 0)
             {
                 return Observable.Empty<BuildInfo>(scheduler);
             }
 
             return Observable.Create<BuildInfo>((observer, cancellationToken) =>
-                Task<IDisposable>.Factory.StartNew(
+                Task.Run(
                     () => scheduler.Schedule(() => ObserveBuilds(sinceDate, running, observer, cancellationToken))));
         }
 
@@ -153,13 +196,13 @@ namespace TeamCityIntegration
         {
             try
             {
-                if (getBuildTypesTask.Any(task => PropagateTaskAnomalyToObserver(task, observer)))
+                if (_getBuildTypesTask.Any(task => PropagateTaskAnomalyToObserver(task.Task, observer)))
                 {
                     return;
                 }
 
                 var localObserver = observer;
-                var buildTypes = getBuildTypesTask.SelectMany(t => t.Result).Where(id => BuildIdFilter.IsMatch(id));
+                var buildTypes = _getBuildTypesTask.SelectMany(t => t.Join()).Where(id => BuildIdFilter.IsMatch(id));
                 var buildIdTasks = buildTypes.Select(buildTypeId => GetFilteredBuildsXmlResponseAsync(buildTypeId, cancellationToken, sinceDate, running)).ToArray();
 
                 Task.Factory
@@ -170,7 +213,7 @@ namespace TeamCityIntegration
                                 var buildIds = completedTasks.Where(task => task.Status == TaskStatus.RanToCompletion)
                                                              .SelectMany(
                                                                  buildIdTask =>
-                                                                 buildIdTask.Result
+                                                                 buildIdTask.CompletedResult()
                                                                             .XPathSelectElements("/builds/build")
                                                                             .Select(x => x.Attribute("id").Value))
                                                              .ToArray();
@@ -210,7 +253,7 @@ namespace TeamCityIntegration
                                 {
                                     if (task.Status == TaskStatus.RanToCompletion)
                                     {
-                                        var buildDetails = task.Result;
+                                        var buildDetails = task.CompletedResult();
                                         var buildInfo = CreateBuildInfo(buildDetails);
                                         if (buildInfo.CommitHashList.Any())
                                         {
@@ -221,7 +264,7 @@ namespace TeamCityIntegration
                             cancellationToken,
                             TaskContinuationOptions.AttachedToParent | TaskContinuationOptions.ExecuteSynchronously,
                             TaskScheduler.Current);
-                
+
                 tasks.Add(notifyObserverTask);
                 --buildsLeft;
 
@@ -255,7 +298,7 @@ namespace TeamCityIntegration
 
             if (task.IsFaulted)
             {
-                Debug.Assert(task.Exception != null);
+                Debug.Assert(task.Exception != null, "task.Exception != null");
 
                 observer.OnError(task.Exception);
                 return true;
@@ -273,7 +316,7 @@ namespace TeamCityIntegration
             var statusText = buildXElement.Element("statusText").Value;
             var webUrl = buildXElement.Attribute("webUrl").Value + LogAsGuestUrlParameter;
             var revisionsElements = buildXElement.XPathSelectElements("revisions/revision");
-            var commitHashList = revisionsElements.Select(x => x.Attribute("version").Value).ToArray();
+            var commitHashList = revisionsElements.Select(x => ObjectId.Parse(x.Attribute("version").Value)).ToList();
             var runningAttribute = buildXElement.Attribute("running");
 
             if (runningAttribute != null && Convert.ToBoolean(runningAttribute.Value))
@@ -285,21 +328,15 @@ namespace TeamCityIntegration
             }
 
             var buildInfo = new BuildInfo
-                {
-                    Id = idValue,
-                    StartDate = DecodeJsonDateTime(startDateText),
-                    Status = ParseBuildStatus(statusValue),
-                    Description = statusText,
-                    CommitHashList = commitHashList,
-                    Url = webUrl
-                };
+            {
+                Id = idValue,
+                StartDate = DecodeJsonDateTime(startDateText),
+                Status = ParseBuildStatus(statusValue),
+                Description = statusText,
+                CommitHashList = commitHashList,
+                Url = webUrl
+            };
             return buildInfo;
-        }
-
-        private static AuthenticationHeaderValue CreateBasicHeader(string username, string password)
-        {
-            byte[] byteArray = Encoding.UTF8.GetBytes(string.Format("{0}:{1}", username, password));
-            return new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
         }
 
         private static BuildInfo.BuildStatus ParseBuildStatus(string statusValue)
@@ -319,7 +356,7 @@ namespace TeamCityIntegration
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            return httpClient.GetAsync(FormatRelativePath(restServicePath), HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+            return _httpClient.GetAsync(FormatRelativePath(restServicePath), HttpCompletionOption.ResponseHeadersRead, cancellationToken)
                              .ContinueWith(
                                  task => GetStreamFromHttpResponseAsync(task, restServicePath, cancellationToken),
                                  cancellationToken,
@@ -330,16 +367,20 @@ namespace TeamCityIntegration
 
         private Task<Stream> GetStreamFromHttpResponseAsync(Task<HttpResponseMessage> task, string restServicePath, CancellationToken cancellationToken)
         {
-#if !__MonoCS__
+            if (!task.IsCompleted)
+            {
+                throw new InvalidOperationException($"Task in state '{task.Status}' was expected to be completed.");
+            }
+
             bool retry = task.IsCanceled && !cancellationToken.IsCancellationRequested;
             bool unauthorized = task.Status == TaskStatus.RanToCompletion &&
-                                task.Result.StatusCode == HttpStatusCode.Unauthorized;
+                                (task.CompletedResult().StatusCode == HttpStatusCode.Unauthorized || task.CompletedResult().StatusCode == HttpStatusCode.Forbidden);
 
             if (!retry)
             {
-                if (task.Result.IsSuccessStatusCode)
+                if (task.CompletedResult().IsSuccessStatusCode)
                 {
-                    var httpContent = task.Result.Content;
+                    var httpContent = task.CompletedResult().Content;
 
                     if (httpContent.Headers.ContentType.MediaType == "text/html")
                     {
@@ -360,38 +401,59 @@ namespace TeamCityIntegration
 
             if (unauthorized)
             {
-                var buildServerCredentials = buildServerWatcher.GetBuildServerCredentials(this, false);
-
-                if (buildServerCredentials != null)
+                var buildServerCredentials = _buildServerWatcher.GetBuildServerCredentials(this, true);
+                var useBuildServerCredentials = buildServerCredentials != null
+                                                && !buildServerCredentials.UseGuestAccess
+                                                && (string.IsNullOrWhiteSpace(buildServerCredentials.Username) && string.IsNullOrWhiteSpace(buildServerCredentials.Password));
+                if (useBuildServerCredentials)
                 {
-                    UpdateHttpClientOptions(buildServerCredentials);
-
+                    UpdateHttpClientOptionsCredentialsAuth(buildServerCredentials);
                     return GetStreamAsync(restServicePath, cancellationToken);
                 }
-
-                throw new OperationCanceledException(task.Result.ReasonPhrase);
+                else
+                {
+                    UpdateHttpClientOptionsNtlmAuth(buildServerCredentials);
+                    return GetStreamAsync(restServicePath, cancellationToken);
+                }
             }
 
-            throw new HttpRequestException(task.Result.ReasonPhrase);
-#else
-            return null;
-#endif
+            throw new HttpRequestException(task.CompletedResult().ReasonPhrase);
         }
 
-        private void UpdateHttpClientOptions(IBuildServerCredentials buildServerCredentials)
+        public void UpdateHttpClientOptionsNtlmAuth(IBuildServerCredentials buildServerCredentials)
         {
-            var useGuestAccess = buildServerCredentials == null || buildServerCredentials.UseGuestAccess;
+            try
+            {
+                _httpClient.Dispose();
+                _httpClientHandler.Dispose();
 
-            if (useGuestAccess)
-            {
-                httpClientHostSuffix = "guestAuth";
-                httpClient.DefaultRequestHeaders.Authorization = null;
+                _httpClientHostSuffix = "httpAuth";
+                CreateNewHttpClient(HostName);
+                _httpClientHandler.CookieContainer = GetTeamCityNtlmAuthCookie(_httpClient.BaseAddress.AbsoluteUri, buildServerCredentials);
             }
-            else
+            catch (Exception exception)
             {
-                httpClientHostSuffix = "httpAuth";
-                httpClient.DefaultRequestHeaders.Authorization = CreateBasicHeader(buildServerCredentials.Username, buildServerCredentials.Password);
+                Console.WriteLine(exception);
+                throw;
             }
+        }
+
+        public void UpdateHttpClientOptionsGuestAuth()
+        {
+            _httpClientHostSuffix = "guestAuth";
+            _httpClient.DefaultRequestHeaders.Authorization = null;
+        }
+
+        private void UpdateHttpClientOptionsCredentialsAuth(IBuildServerCredentials buildServerCredentials)
+        {
+            _httpClientHostSuffix = "httpAuth";
+            _httpClient.DefaultRequestHeaders.Authorization = CreateBasicHeader(buildServerCredentials.Username, buildServerCredentials.Password);
+        }
+
+        private static AuthenticationHeaderValue CreateBasicHeader(string username, string password)
+        {
+            byte[] byteArray = Encoding.UTF8.GetBytes(string.Format("{0}:{1}", username, password));
+            return new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
         }
 
         private Task<XDocument> GetXmlResponseAsync(string relativePath, CancellationToken cancellationToken)
@@ -406,19 +468,24 @@ namespace TeamCityIntegration
                             return XDocument.Load(responseStream);
                         }
                     },
-                cancellationToken, 
-                TaskContinuationOptions.AttachedToParent, 
+                cancellationToken,
+                TaskContinuationOptions.AttachedToParent,
                 TaskScheduler.Current);
         }
 
         private Uri FormatRelativePath(string restServicePath)
         {
-            return new Uri(string.Format("{0}/app/rest/{1}", httpClientHostSuffix, restServicePath), UriKind.Relative);
+            return new Uri(string.Format("{0}/app/rest/{1}", _httpClientHostSuffix, restServicePath), UriKind.Relative);
         }
 
         private Task<XDocument> GetBuildFromIdXmlResponseAsync(string buildId, CancellationToken cancellationToken)
         {
             return GetXmlResponseAsync(string.Format("builds/id:{0}", buildId), cancellationToken);
+        }
+
+        private Task<XDocument> GetBuildTypeFromIdXmlResponseAsync(string buildId, CancellationToken cancellationToken)
+        {
+            return GetXmlResponseAsync(string.Format("buildTypes/id:{0}", buildId), cancellationToken);
         }
 
         private Task<XDocument> GetProjectFromNameXmlResponseAsync(string projectName, CancellationToken cancellationToken)
@@ -477,45 +544,77 @@ namespace TeamCityIntegration
         {
             GC.SuppressFinalize(this);
 
-            if (httpClient != null)
-            {
-                httpClient.Dispose();
-            }
+            _httpClient?.Dispose();
         }
 
-        public IList<string> GetAllProjects()
+        [CanBeNull]
+        public Project GetProjectsTree()
         {
-            var projectsRootElement = GetProjectsResponseAsync(CancellationToken.None).Result;
-            var projects = projectsRootElement.Root.Elements().Select(e=>(string)e.Attribute("id"));
-            return projects.ToList();
-        }
-
-        public Project GetProjectChildren(string projectId)
-        {
-            var projectsRootElement = GetProjectFromNameXmlResponseAsync(projectId, CancellationToken.None).Result;
-            var builds = projectsRootElement.Root.Element("buildTypes").Elements().Select(e => new Build()
+            var projectsRootElement = ThreadHelper.JoinableTaskFactory.Run(() => GetProjectsResponseAsync(CancellationToken.None));
+            var projects = projectsRootElement.Root.Elements().Where(e => (string)e.Attribute("archived") != "true").Select(e => new Project
             {
                 Id = (string)e.Attribute("id"),
-                Name = (string)e.Attribute("name")
+                Name = (string)e.Attribute("name"),
+                ParentProject = (string)e.Attribute("parentProjectId"),
+                SubProjects = new List<Project>()
             }).ToList();
-            var projects = projectsRootElement.Root.Element("projects").Elements().Select(e => (string)e.Attribute("id")).ToList();
-            return new Project
+
+            var projectDictionary = projects.ToDictionary(p => p.Id, p => p);
+
+            Project rootProject = null;
+            foreach (var project in projects)
             {
-                Builds = builds,
-                Projects = projects
+                if (project.ParentProject != null)
+                {
+                    projectDictionary[project.ParentProject].SubProjects.Add(project);
+                }
+                else
+                {
+                    rootProject = project;
+                }
+            }
+
+            return rootProject;
+        }
+
+        public List<Build> GetProjectBuilds(string projectId)
+        {
+            var projectsRootElement = ThreadHelper.JoinableTaskFactory.Run(() => GetProjectFromNameXmlResponseAsync(projectId, CancellationToken.None));
+            return projectsRootElement.Root.Element("buildTypes").Elements().Select(e => new Build
+            {
+                Id = (string)e.Attribute("id"),
+                Name = (string)e.Attribute("name"),
+                ParentProject = (string)e.Attribute("projectId")
+            }).ToList();
+        }
+
+        public Build GetBuildType(string buildId)
+        {
+            var projectsRootElement = ThreadHelper.JoinableTaskFactory.Run(() => GetBuildTypeFromIdXmlResponseAsync(buildId, CancellationToken.None));
+            var buildType = projectsRootElement.Root;
+            return new Build
+            {
+                Id = buildId,
+                Name = (string)buildType.Attribute("name"),
+                ParentProject = (string)buildType.Attribute("projectId")
             };
         }
     }
 
     public class Project
     {
-        public IList<string> Projects { get; set; }
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public string ParentProject { get; set; }
+        public IList<Project> SubProjects { get; set; }
         public IList<Build> Builds { get; set; }
     }
 
     public class Build
     {
+        public string ParentProject { get; set; }
         public string Id { get; set; }
         public string Name { get; set; }
+        public string DisplayName => Name + " (" + Id + ")";
     }
 }

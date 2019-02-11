@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using GitUIPluginInterfaces;
+﻿using System.Collections.Generic;
 
 namespace GitCommands.Settings
 {
@@ -12,21 +8,36 @@ namespace GitCommands.Settings
         public readonly T DefaultValue;
         public readonly string Name;
 
-        public Setting(string aName, SettingsPath aSettingsSource, T aDefaultValue)
+        protected Setting(string name, SettingsPath settingsSource, T defaultValue)
         {
-            Name = aName;
-            SettingsSource = aSettingsSource;
-            DefaultValue = aDefaultValue;
+            Name = name;
+            SettingsSource = settingsSource;
+            DefaultValue = defaultValue;
         }
 
         public abstract T Value { get; set; }
 
-        public string FullPath
+        public T ValueOrDefault
         {
             get
             {
-                return SettingsSource.PathFor(Name);
+                T v = Value;
+                if (ValueIsEmpty(v))
+                {
+                    return DefaultValue;
+                }
+                else
+                {
+                    return v;
+                }
             }
         }
+
+        public virtual bool ValueIsEmpty(T value)
+        {
+            return EqualityComparer<T>.Default.Equals(value, default);
+        }
+
+        public string FullPath => SettingsSource.PathFor(Name);
     }
 }

@@ -1,65 +1,115 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Text;
+using JetBrains.Annotations;
 
 namespace GitUIPluginInterfaces
 {
     /// <summary>Provides manipulation with git module.</summary>
     public interface IGitModule
     {
-        /// <summary>
-        /// Run git command, console window is hidden, redirect output
-        /// </summary>
-        Process RunGitCmdDetached(string arguments, Encoding encoding = null);
+        [NotNull]
+        IConfigFileSettings LocalConfigFile { get; }
+
+        string AddRemote(string remoteName, string path);
+        IReadOnlyList<IGitRef> GetRefs(bool tags = true, bool branches = true);
+        IEnumerable<string> GetSettings(string setting);
+        IEnumerable<IGitItem> GetTree([CanBeNull] ObjectId commitId, bool full);
 
         /// <summary>
-        /// Run git command, console window is hidden, wait for exit, redirect output
+        /// Removes the registered remote by running <c>git remote rm</c> command.
         /// </summary>
-        string RunGitCmd(string arguments, Encoding encoding = null, byte[] stdInput = null);
+        /// <param name="remoteName">The remote name.</param>
+        string RemoveRemote(string remoteName);
 
         /// <summary>
-        /// Run git command, console window is hidden, wait for exit, redirect output
+        /// Renames the registered remote by running <c>git remote rename</c> command.
         /// </summary>
-        CmdResult RunGitCmdResult(string arguments, Encoding encoding = null, byte[] stdInput = null);
+        /// <param name="remoteName">The current remote name.</param>
+        /// <param name="newName">The new remote name.</param>
+        string RenameRemote(string remoteName, string newName);
 
         /// <summary>
-        /// Run command, console window is hidden, wait for exit, redirect output
+        /// Parses the revisionExpression as a git reference and returns an <see cref="ObjectId"/>./>
         /// </summary>
-        string RunCmd(string cmd, string arguments, Encoding encoding = null, byte[] stdIn = null);
+        /// <param name="revisionExpression">An expression like HEAD or commit hash that can be parsed as a git reference.</param>
+        /// <returns>An ObjectID representing that git reference</returns>
+        ObjectId RevParse(string revisionExpression);
 
-        /// <summary>
-        /// Run command, console window is hidden, wait for exit, redirect output
-        /// </summary>
-        CmdResult RunCmdResult(string cmd, string arguments, Encoding encoding = null, byte[] stdInput = null);
-
-        string RunBatchFile(string batchFile);
+        void SetSetting(string setting, string value);
+        void UnsetSetting(string setting);
 
         /// <summary>Gets the directory which contains the git repository.</summary>
         string WorkingDir { get; }
 
-        /// <summary>Gets the ".git" directory path.</summary>
-        string GetGitDirectory();
+        /// <summary>
+        /// Gets the access to the current git executable associated with this module.
+        /// </summary>
+        IExecutable GitExecutable { get; }
+
+        /// <summary>
+        /// Gets the access to the current git executable associated with this module.
+        /// </summary>
+        [NotNull]
+        IGitCommandRunner GitCommandRunner { get; }
+
+        /// <summary>
+        /// Gets the location of .git directory for the current working folder.
+        /// </summary>
+        string WorkingDirGitDir { get; }
+
+        /// <summary>
+        /// Asks git to resolve the given relativePath
+        /// git special folders are located in different directories depending on the kind of repo: submodule, worktree, main
+        /// See https://git-scm.com/docs/git-rev-parse#git-rev-parse---git-pathltpathgt
+        /// </summary>
+        /// <param name="relativePath">A path relative to the .git directory</param>
+        string ResolveGitInternalPath(string relativePath);
 
         /// <summary>Indicates whether the specified directory contains a git repository.</summary>
         bool IsValidGitWorkingDir();
 
-        /// <summary>Gets the path to the git application executable.</summary>
-        string GitCommand { get; }
+        /// <summary>Indicates HEAD is not pointing to a branch (i.e. it is detached).</summary>
+        bool IsDetachedHead();
 
-        Version AppVersion { get; }
+        [ContractAnnotation("=>false,objectId:null")]
+        [ContractAnnotation("=>true,objectId:notnull")]
+        bool TryResolvePartialCommitId(string objectIdPrefix, out ObjectId objectId);
 
-        string GravatarCacheDir { get; }
+        string GetSubmoduleFullPath(string localPath);
 
         IEnumerable<IGitSubmoduleInfo> GetSubmodulesInfo();
 
-        IList<string> GetSubmodulesLocalPaths(bool recursive = true);
+        /// <summary>
+        /// Gets the local paths of any submodules of this git module.
+        /// </summary>
+        /// <remarks>
+        /// <para>This method obtains its results by parsing the <c>.gitmodules</c> file.</para>
+        ///
+        /// <para>This approach is a faster than <see cref="GetSubmodulesInfo"/> which
+        /// invokes the <c>git submodule</c> command.</para>
+        /// </remarks>
+        IReadOnlyList<string> GetSubmodulesLocalPaths(bool recursive = true);
 
         IGitModule GetSubmodule(string submoduleName);
 
-        string[] GetRemotes(bool allowEmpty);
+        /// <summary>
+        /// Retrieves registered remotes by running <c>git remote show</c> command.
+        /// </summary>
+        /// <returns>Registered remotes.</returns>
+        IReadOnlyList<string> GetRemoteNames();
+
+        /// <summary>
+        /// Gets the commit ID of the currently checked out commit.
+        /// If the repo is bare or has no commits, <c>null</c> is returned.
+        /// </summary>
+        [CanBeNull]
+        ObjectId GetCurrentCheckout();
+
+        /// <summary>Gets the remote of the current branch; or "" if no remote is configured.</summary>
+        string GetCurrentRemote();
 
         string GetSetting(string setting);
+        string GetEffectiveSetting(string setting);
 
         bool StartPageantForRemote(string remote);
 
@@ -71,6 +121,15 @@ namespace GitUIPluginInterfaces
 
         bool IsRunningGitProcess();
 
+        [NotNull]
         ISettingsSource GetEffectiveSettings();
+
+        string ReEncodeStringFromLossless(string s);
+
+        string ReEncodeCommitMessage(string s, string toEncodingName);
+
+        string GetDescribe(ObjectId commitId);
+
+        (int totalCount, Dictionary<string, int> countByName) GetCommitsByContributor(DateTime? since = null, DateTime? until = null);
     }
 }

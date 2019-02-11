@@ -1,49 +1,36 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using GitUIPluginInterfaces;
 
 namespace GitCommands
 {
     public sealed class GitDeleteBranchCmd : GitCommand
     {
-        private readonly ICollection<GitRef> branches;
-        private readonly bool force;
+        private readonly IReadOnlyCollection<IGitRef> _branches;
+        private readonly bool _force;
 
-        public GitDeleteBranchCmd(IEnumerable<GitRef> branches, bool force)
+        public GitDeleteBranchCmd(IReadOnlyCollection<IGitRef> branches, bool force)
         {
-            if (branches == null)
-                throw new ArgumentNullException("branches");
-
-            this.branches = branches.ToArray();
-            this.force = force;
+            _branches = branches ?? throw new ArgumentNullException(nameof(branches));
+            _force = force;
         }
 
-        public override string GitComandName()
+        public override bool AccessesRemote => false;
+        public override bool ChangesRepoState => true;
+
+        protected override ArgumentString BuildArguments()
         {
-            return "branch";
-        }
+            var hasRemoteBranch = _branches.Any(branch => branch.IsRemote);
+            var hasNonRemoteBranch = _branches.Any(branch => !branch.IsRemote);
 
-        public override IEnumerable<string> CollectArguments()
-        {
-            yield return force ? "-D" : "-d";
-
-            var hasRemoteBranch = branches.Any(branch => branch.IsRemote);
-            var hasNonRemoteBranch = branches.Any(branch => !branch.IsRemote);
-            if (hasRemoteBranch)
-                yield return hasNonRemoteBranch ? "-a" : "-r";
-
-            foreach (var branch in branches)
-                yield return "\"" + branch.Name + "\"";
-        }
-
-        public override bool AccessesRemote()
-        {
-            return false;
-        }
-
-        public override bool ChangesRepoState()
-        {
-            return true;
+            return new GitArgumentBuilder("branch")
+            {
+                { _force, "-D", "-d" },
+                { hasRemoteBranch && hasNonRemoteBranch, "-a" },
+                { hasRemoteBranch && !hasNonRemoteBranch, "-r" },
+                _branches.Select(branch => branch.Name.Quote())
+            };
         }
     }
 }

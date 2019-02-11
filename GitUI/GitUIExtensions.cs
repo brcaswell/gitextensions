@@ -2,260 +2,175 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Text;
-using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using GitCommands;
+using GitCommands.Patches;
 using GitUI.Editor;
-using ICSharpCode.TextEditor.Util;
+using GitUI.UserControls.RevisionGrid;
+using GitUIPluginInterfaces;
+using JetBrains.Annotations;
 using ResourceManager;
 
 namespace GitUI
 {
     public static class GitUIExtensions
     {
-
-        public static SynchronizationContext UISynchronizationContext;
-
-        /// <summary>
-        /// One row selected:
-        /// B - Selected row
-        /// A - B's parent
-        ///
-        /// Two rows selected:
-        /// A - first selected row
-        /// B - second selected row
-        /// </summary>
-        public enum DiffWithRevisionKind
+        [CanBeNull]
+        private static Patch GetItemPatch(
+            [NotNull] GitModule module,
+            [NotNull] GitItemStatus file,
+            [CanBeNull] ObjectId firstRevision,
+            [CanBeNull] ObjectId secondRevision,
+            [NotNull] string diffArgs,
+            [NotNull] Encoding encoding)
         {
-            DiffAB,
-            DiffALocal,
-            DiffBLocal,
-            DiffAParentLocal,
-            DiffBParentLocal
+            // Files with tree guid should be presented with normal diff
+            var isTracked = file.IsTracked || (file.TreeGuid != null && secondRevision != null);
+
+            return module.GetSingleDiff(firstRevision?.ToString(), secondRevision?.ToString(), file.Name, file.OldName, diffArgs, encoding, true, isTracked);
         }
 
-        public static void OpenWithDifftool(this RevisionGrid grid, string fileName, string oldFileName, DiffWithRevisionKind diffKind, string parentGuid)
+        [CanBeNull]
+        private static string GetSelectedPatch(
+            [NotNull] this FileViewer diffViewer,
+            [CanBeNull] ObjectId firstRevision,
+            [CanBeNull] ObjectId secondRevision,
+            [NotNull] GitItemStatus file)
         {
-            IList<GitRevision> revisions = grid.GetSelectedRevisions();
-
-            if (revisions.Count == 0 || revisions.Count > 2)
-                return;
-
-            string output;
-            if (diffKind == DiffWithRevisionKind.DiffAB)
-            {
-                string firstRevision = revisions[0].Guid;
-                var secondRevision = revisions.Count == 2 ? revisions[1].Guid : null;
-
-                //to simplify if-ology
-                if (GitRevision.IsArtificial(secondRevision) && firstRevision != GitRevision.UnstagedGuid)
-                {
-                    firstRevision = secondRevision;
-                    secondRevision = revisions[0].Guid;
-                }
-
-                string extraDiffArgs = "-M -C";
-
-                if (GitRevision.IsArtificial(firstRevision))
-                {
-                    bool staged = firstRevision == GitRevision.IndexGuid;
-                    if (secondRevision == null || secondRevision == GitRevision.IndexGuid)
-                        firstRevision = string.Empty;
-                    else
-                        firstRevision = secondRevision;
-                    secondRevision = string.Empty;
-                    if (staged) //rev1 vs index
-                        extraDiffArgs = string.Join(" ", extraDiffArgs, "--cached");
-                }
-                else if (secondRevision == null)
-                    secondRevision = parentGuid ?? firstRevision + "^";
-
-                output = grid.Module.OpenWithDifftool(fileName, oldFileName, firstRevision, secondRevision, extraDiffArgs);
-            }
-            else
-            {
-                string revisionToCmp;
-                if (revisions.Count == 1)
-                {
-                    GitRevision revision = revisions[0];
-                    if (diffKind == DiffWithRevisionKind.DiffALocal)
-                        revisionToCmp = parentGuid ?? (revision.ParentGuids.Length == 0 ? null : revision.ParentGuids[0]);
-                    else if (diffKind == DiffWithRevisionKind.DiffBLocal)
-                        revisionToCmp = revision.Guid;
-                    else
-                        revisionToCmp = null;
-                }
-                else
-                {
-                    switch (diffKind)
-                    {
-                        case DiffWithRevisionKind.DiffALocal:
-                            revisionToCmp = revisions[0].Guid;
-                            break;
-                        case DiffWithRevisionKind.DiffBLocal:
-                            revisionToCmp = revisions[1].Guid;
-                            break;
-                        case DiffWithRevisionKind.DiffAParentLocal:
-                            revisionToCmp = revisions[0].ParentGuids.Length == 0 ? null : revisions[0].ParentGuids[0];
-                            break;
-                        case DiffWithRevisionKind.DiffBParentLocal:
-                            revisionToCmp = revisions[1].ParentGuids.Length == 0 ? null : revisions[1].ParentGuids[0];
-                            break;
-                        default:
-                            revisionToCmp = null;
-                            break;
-                    }
-                }
-
-                if (revisionToCmp == null)
-                    return;
-
-                output = grid.Module.OpenWithDifftool(fileName, null, revisionToCmp);
-            }
-
-            if (!string.IsNullOrEmpty(output))
-                MessageBox.Show(grid, output);
-        }
-
-        public static bool IsItemUntracked(GitItemStatus file,
-            string firstRevision, string secondRevision)
-        {
-            if (firstRevision == GitRevision.UnstagedGuid) //working directory changes
-            {
-                if (secondRevision == null || secondRevision == GitRevision.IndexGuid)
-                    return !file.IsTracked;
-            }
-            return false;
-        }
-
-        private static PatchApply.Patch GetItemPatch(GitModule module, GitItemStatus file,
-            string firstRevision, string secondRevision, string diffArgs, Encoding encoding)
-        {
-            bool cacheResult = true;
-            if (GitRevision.IsArtificial(firstRevision))
-            {
-                bool staged = firstRevision == GitRevision.IndexGuid;
-                if (secondRevision == null || secondRevision == GitRevision.IndexGuid)
-                {
-                    return module.GetCurrentChanges(file.Name, file.OldName, staged,
-                            diffArgs, encoding);
-                }
-
-                cacheResult = false;
-                firstRevision = secondRevision;
-                secondRevision = string.Empty;
-                if (staged)
-                    diffArgs = string.Join(" ", diffArgs, "--cached");
-            }
-            else if (secondRevision == null)
-                secondRevision = firstRevision + "^";
-
-            return module.GetSingleDiff(firstRevision, secondRevision, file.Name, file.OldName,
-                    diffArgs, encoding, cacheResult);
-        }
-
-        public static string GetSelectedPatch(this FileViewer diffViewer, RevisionGrid grid, GitItemStatus file)
-        {
-            IList<GitRevision> revisions = grid.GetSelectedRevisions();
-            string firstRevision = revisions.Count > 0 ? revisions[0].Guid : null;
-            string secondRevision = revisions.Count == 2 ? revisions[1].Guid : null;
-            return GetSelectedPatch(diffViewer, firstRevision, secondRevision, file);
-        }
-
-        public static string GetSelectedPatch(this FileViewer diffViewer, string firstRevision, string secondRevision, GitItemStatus file)
-        {
-            if (firstRevision == null)
-                return null;
-
-            //to simplify if-ology
-            if (GitRevision.IsArtificial(secondRevision) && firstRevision != GitRevision.UnstagedGuid)
-            {
-                string temp = firstRevision;
-                firstRevision = secondRevision;
-                secondRevision = temp;
-            }
-
-            if (IsItemUntracked(file, firstRevision, secondRevision))
+            if (!file.IsTracked)
             {
                 var fullPath = Path.Combine(diffViewer.Module.WorkingDir, file.Name);
                 if (Directory.Exists(fullPath) && GitModule.IsValidGitWorkingDir(fullPath))
+                {
+                    // git-status does not detect details for untracked and git-diff --no-index will not give info
                     return LocalizationHelpers.GetSubmoduleText(diffViewer.Module, file.Name.TrimEnd('/'), "");
-                return FileReader.ReadFileContent(fullPath, diffViewer.Encoding);
+                }
             }
 
-            if (file.IsSubmodule && file.SubmoduleStatus != null)
-                return LocalizationHelpers.ProcessSubmoduleStatus(diffViewer.Module, file.SubmoduleStatus.Result);
+            if (file.IsSubmodule && file.GetSubmoduleStatusAsync() != null)
+            {
+                return LocalizationHelpers.ProcessSubmoduleStatus(diffViewer.Module, ThreadHelper.JoinableTaskFactory.Run(() => file.GetSubmoduleStatusAsync()));
+            }
 
-            PatchApply.Patch patch = GetItemPatch(diffViewer.Module, file, firstRevision, secondRevision,
+            Patch patch = GetItemPatch(diffViewer.Module, file, firstRevision, secondRevision,
                 diffViewer.GetExtraDiffArguments(), diffViewer.Encoding);
 
             if (patch == null)
+            {
                 return string.Empty;
+            }
 
             if (file.IsSubmodule)
+            {
                 return LocalizationHelpers.ProcessSubmodulePatch(diffViewer.Module, file.Name, patch);
+            }
+
             return patch.Text;
         }
 
-        public static void ViewChanges(this FileViewer diffViewer, IList<GitRevision> revisions, GitItemStatus file, string defaultText)
+        public static Task ViewChangesAsync(this FileViewer diffViewer, IReadOnlyList<GitRevision> revisions, GitItemStatus file, string defaultText)
         {
-            var firstRevision = revisions.Count > 0 ? revisions[0] : null;
-            string firstRevisionGuid = firstRevision == null ? null : firstRevision.Guid;
-            string parentRevisionGuid = revisions.Count == 2 ? revisions[1].Guid : null;
-            if (parentRevisionGuid == null && firstRevision != null && firstRevision.ParentGuids != null && firstRevision.ParentGuids.Length > 0)
-                parentRevisionGuid = firstRevision.ParentGuids[0];
-            ViewChanges(diffViewer, firstRevisionGuid, parentRevisionGuid, file, defaultText);
+            if (revisions.Count == 0)
+            {
+                return Task.CompletedTask;
+            }
+
+            var selectedRevision = revisions[0];
+            var secondRevision = selectedRevision?.ObjectId;
+            var firstRevision = revisions.Count >= 2 ? revisions[1].ObjectId : null;
+            if (firstRevision == null && selectedRevision != null)
+            {
+                firstRevision = selectedRevision.FirstParentGuid;
+            }
+
+            return ViewChangesAsync(diffViewer, firstRevision, secondRevision, file, defaultText, openWithDifftool: null /* use default */);
         }
 
-        public static void ViewChanges(this FileViewer diffViewer, string revision, string parentRevision, GitItemStatus file, string defaultText)
+        public static Task ViewChangesAsync(
+            this FileViewer diffViewer,
+            [CanBeNull] ObjectId firstRevision,
+            ObjectId secondRevision,
+            [NotNull] GitItemStatus file,
+            [NotNull] string defaultText,
+            [CanBeNull] Action openWithDifftool)
         {
-            if (parentRevision == null)
+            if (firstRevision == null)
             {
-                if (file.TreeGuid.IsNullOrEmpty())
-                    diffViewer.ViewGitItemRevision(file.Name, revision);
-                else if (!file.IsSubmodule)
-                    diffViewer.ViewGitItem(file.Name, file.TreeGuid);
-                else
-                    diffViewer.ViewText(file.Name,
-                        LocalizationHelpers.GetSubmoduleText(diffViewer.Module, file.Name, file.TreeGuid));
+                // The previous commit does not exist, nothing to compare with
+                if (file.TreeGuid == null)
+                {
+                    return diffViewer.ViewGitItemAsync(file.Name, file.TreeGuid);
+                }
+
+                if (secondRevision == null)
+                {
+                    throw new ArgumentNullException(nameof(secondRevision));
+                }
+
+                return diffViewer.ViewGitItemRevisionAsync(file.Name, secondRevision);
             }
-            else
+
+            return diffViewer.ViewPatchAsync(() =>
             {
-                diffViewer.ViewPatch(() =>
-                    {
-                        string selectedPatch = diffViewer.GetSelectedPatch(revision, parentRevision, file);
-                        return selectedPatch ?? defaultText;
-                    });
-            }
+                string selectedPatch = diffViewer.GetSelectedPatch(firstRevision, secondRevision, file);
+                if (selectedPatch == null)
+                {
+                    return (text: defaultText, openWithDifftool: null /* not applicable */);
+                }
+
+                return (text: selectedPatch,
+                    openWithDifftool: openWithDifftool ?? OpenWithDifftool);
+
+                void OpenWithDifftool()
+                {
+                    diffViewer.Module.OpenWithDifftool(
+                        file.Name,
+                        null,
+                        firstRevision.ToString(),
+                        firstRevision.ToString(),
+                        "",
+                        file.IsTracked);
+                }
+            });
         }
 
         public static void RemoveIfExists(this TabControl tabControl, TabPage page)
         {
             if (tabControl.TabPages.Contains(page))
+            {
                 tabControl.TabPages.Remove(page);
+            }
         }
 
         public static void InsertIfNotExists(this TabControl tabControl, int index, TabPage page)
         {
             if (!tabControl.TabPages.Contains(page))
+            {
                 tabControl.TabPages.Insert(index, page);
+            }
         }
 
         public static void Mask(this Control control)
         {
-            if (control.FindMaskPanel() == null)
+            if (FindMaskPanel(control) == null)
             {
-                MaskPanel panel = new MaskPanel();
+                var panel = new LoadingControl
+                {
+                    Dock = DockStyle.Fill,
+                    IsAnimating = true,
+                    BackColor = SystemColors.AppWorkspace
+                };
                 control.Controls.Add(panel);
-                panel.Dock = DockStyle.Fill;
                 panel.BringToFront();
             }
         }
 
         public static void UnMask(this Control control)
         {
-            MaskPanel panel = control.FindMaskPanel();
+            var panel = FindMaskPanel(control);
             if (panel != null)
             {
                 control.Controls.Remove(panel);
@@ -263,23 +178,10 @@ namespace GitUI
             }
         }
 
-        private static MaskPanel FindMaskPanel(this Control control)
+        [CanBeNull]
+        private static LoadingControl FindMaskPanel(Control control)
         {
-            foreach (var c in control.Controls)
-                if (c is MaskPanel)
-                    return c as MaskPanel;
-
-            return null;
-        }
-
-        public class MaskPanel : PictureBox
-        {
-            public MaskPanel()
-            {
-                Image = Properties.Resources.loadingpanel;
-                SizeMode = PictureBoxSizeMode.CenterImage;
-                BackColor = SystemColors.AppWorkspace;
-            }
+            return control.Controls.Cast<Control>().OfType<LoadingControl>().FirstOrDefault();
         }
 
         public static IEnumerable<TreeNode> AllNodes(this TreeView tree)
@@ -287,71 +189,87 @@ namespace GitUI
             return tree.Nodes.AllNodes();
         }
 
-        public static IEnumerable<TreeNode> AllNodes(this TreeNodeCollection nodes)
+        private static IEnumerable<TreeNode> AllNodes(this TreeNodeCollection nodes)
         {
             foreach (TreeNode node in nodes)
             {
                 yield return node;
 
-                foreach(TreeNode subNode in node.Nodes.AllNodes())
+                foreach (TreeNode subNode in node.Nodes.AllNodes())
+                {
                     yield return subNode;
+                }
             }
         }
 
-        public static void InvokeAsync(this Control control, Action action)
+        public static async Task InvokeAsync(this Control control, Action action)
         {
-            InvokeAsync(control, _ => action(), null);
+            await control.SwitchToMainThreadAsync();
+            action();
         }
 
-        public static void InvokeAsync(this Control control, SendOrPostCallback action, object state)
+        public static async Task InvokeAsync<T>(this Control control, Action<T> action, T state)
         {
-            SendOrPostCallback checkDisposedAndInvoke = (s) =>
-            {
-                if (!control.IsDisposed)
-                    action(s);
-            };
+            await control.SwitchToMainThreadAsync();
+            action(state);
+        }
 
-            if (!control.IsDisposed)
-                UISynchronizationContext.Post(checkDisposedAndInvoke, state);
+#pragma warning disable VSTHRD100 // Avoid async void methods
+        /// <summary>
+        /// Use <see cref="InvokeAsync(Control, Action)"/> instead. If the result of
+        /// <see cref="InvokeAsync(Control, Action)"/> is not awaited, use
+        /// <see cref="ThreadHelper.FileAndForget(Task, Func{Exception, bool})"/> to ignore it.
+        /// </summary>
+        public static async void InvokeAsyncDoNotUseInNewCode(this Control control, Action action)
+#pragma warning restore VSTHRD100 // Avoid async void methods
+        {
+            if (ThreadHelper.JoinableTaskContext.IsOnMainThread)
+            {
+                await Task.Yield();
+            }
+            else
+            {
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            }
+
+            if (control.IsDisposed)
+            {
+                return;
+            }
+
+            action();
         }
 
         public static void InvokeSync(this Control control, Action action)
         {
-            InvokeSync(control, _ => action(), null);
-        }
-
-        public static void InvokeSync(this Control control, SendOrPostCallback action, object state)
-        {
-            SendOrPostCallback checkDisposedAndInvoke = (s) =>
-            {
-                if (!control.IsDisposed)
+            ThreadHelper.JoinableTaskFactory.Run(
+                async () =>
                 {
                     try
                     {
-                        action(s);
+                        await InvokeAsync(control, action);
                     }
                     catch (Exception e)
                     {
                         e.Data["StackTrace" + e.Data.Count] = e.StackTrace;
                         throw;
                     }
-                }
-            };
-
-            if (!control.IsDisposed)
-                UISynchronizationContext.Send(checkDisposedAndInvoke, state);
+                });
         }
 
         public static Control FindFocusedControl(this ContainerControl container)
         {
-            var control = container.ActiveControl;
-            container = control as ContainerControl;
-
-            if (container == null)
-                return control;
-            else
-                return container.FindFocusedControl();
+            while (true)
+            {
+                if (container.ActiveControl is ContainerControl activeContainer)
+                {
+                    container = activeContainer;
+                }
+                else
+                {
+                    return container.ActiveControl;
+                }
+            }
         }
-
     }
 }

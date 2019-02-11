@@ -1,48 +1,29 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Windows.Forms;
-using GitUIPluginInterfaces;
-using GitCommands.Settings;
+﻿using GitCommands.Settings;
 
 namespace GitUI.CommandsDialogs.SettingsDialog.Pages
 {
-    public partial class DetailedSettingsPage : AutoLayoutSettingsPage
+    public partial class DetailedSettingsPage : RepoDistSettingsPage
     {
         public DetailedSettingsPage()
         {
             InitializeComponent();
             Text = "Detailed";
-            Translate();
+            InitializeComplete();
         }
 
-        protected override void Init(ISettingsPageHost aPageHost)
+        protected override void Init(ISettingsPageHost pageHost)
         {
-            base.Init(aPageHost);
-            CreateSettingsControls();
-            Translate();
+            base.Init(pageHost);
+            BindSettingsWithControls();
         }
 
-        private DetailedGroup DetailedSettings
-        {
-            get
-            {
-                return RepoDistSettingsSet.RepoDistSettings.Detailed;
-            }
-        }
+        private DetailedGroup DetailedSettings => CurrentSettings.Detailed;
 
-        private void CreateSettingsControls()
+        private void BindSettingsWithControls()
         {
-            GroupBoxSettingsLayout main = new GroupBoxSettingsLayout(this, "Browse repository window");
-            AddSettingsLayout(main);
-            main.AddBoolSetting("Show the Console tab", DetailedSettings.ShowConEmuTab);
-            GroupBoxSettingsLayout formPush = new GroupBoxSettingsLayout(this, "Push window");
-            AddSettingsLayout(formPush);
-            formPush.AddBoolSetting("Get remote branches directly from the remote", DetailedSettings.GetRemoteBranchesDirectlyFromRemote);
+            AddSettingBinding(DetailedSettings.GetRemoteBranchesDirectlyFromRemote, chkRemotesFromServer);
+            AddSettingBinding(DetailedSettings.AddMergeLogMessages, addLogMessages);
+            AddSettingBinding(DetailedSettings.MergeLogMessagesCount, nbMessages);
         }
 
         public static SettingsPageReference GetPageReference()

@@ -28,387 +28,386 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.groupBox13 = new System.Windows.Forms.GroupBox();
-            this.label49 = new System.Windows.Forms.Label();
-            this.label22 = new System.Windows.Forms.Label();
+            System.Windows.Forms.TableLayoutPanel tlpnlMain;
+            this.gbGeneral = new System.Windows.Forms.GroupBox();
+            this.tlpnlGeneral = new System.Windows.Forms.TableLayoutPanel();
+            this.chkShowRelativeDate = new System.Windows.Forms.CheckBox();
+            this.truncatePathMethod = new System.Windows.Forms.ComboBox();
+            this.truncateLongFilenames = new System.Windows.Forms.Label();
+            this.chkEnableAutoScale = new System.Windows.Forms.CheckBox();
+            this.chkShowCurrentBranchInVisualStudio = new System.Windows.Forms.CheckBox();
+            this.gbLanguages = new System.Windows.Forms.GroupBox();
+            this.tlpnlLanguage = new System.Windows.Forms.TableLayoutPanel();
             this.Dictionary = new System.Windows.Forms.ComboBox();
             this.downloadDictionary = new System.Windows.Forms.LinkLabel();
+            this.lblSpellingDictionary = new System.Windows.Forms.Label();
+            this.lblLanguage = new System.Windows.Forms.Label();
             this.Language = new System.Windows.Forms.ComboBox();
             this.helpTranslate = new System.Windows.Forms.LinkLabel();
-            this.groupBox15 = new System.Windows.Forms.GroupBox();
-            this.commitFontChangeButton = new System.Windows.Forms.Button();
-            this.label34 = new System.Windows.Forms.Label();
-            this.diffFontChangeButton = new System.Windows.Forms.Button();
-            this.applicationFontChangeButton = new System.Windows.Forms.Button();
-            this.label26 = new System.Windows.Forms.Label();
-            this.label56 = new System.Windows.Forms.Label();
-            this.groupBox14 = new System.Windows.Forms.GroupBox();
-            this.chkShowRelativeDate = new System.Windows.Forms.CheckBox();
-            this.chkShowCurrentBranchInVisualStudio = new System.Windows.Forms.CheckBox();
-            this.chkEnableAutoScale = new System.Windows.Forms.CheckBox();
-            this.truncateLongFilenames = new System.Windows.Forms.Label();
-            this.truncatePathMethod = new System.Windows.Forms.ComboBox();
-            this.groupBox6 = new System.Windows.Forms.GroupBox();
-            this.AuthorImageSize = new System.Windows.Forms.ComboBox();
-            this.NoImageService = new System.Windows.Forms.ComboBox();
-            this.label53 = new System.Windows.Forms.Label();
-            this.label47 = new System.Windows.Forms.Label();
-            this._NO_TRANSLATE_DaysToCacheImages = new System.Windows.Forms.NumericUpDown();
-            this.label46 = new System.Windows.Forms.Label();
-            this.label44 = new System.Windows.Forms.Label();
+            this.gbAuthorImages = new System.Windows.Forms.GroupBox();
+            this.tlpnlAuthor = new System.Windows.Forms.TableLayoutPanel();
+            this.ShowAuthorAvatar = new System.Windows.Forms.CheckBox();
             this.ClearImageCache = new System.Windows.Forms.Button();
-            this.ShowAuthorGravatar = new System.Windows.Forms.CheckBox();
-            this.diffFontDialog = new System.Windows.Forms.FontDialog();
+            this.NoImageService = new System.Windows.Forms.ComboBox();
+            this.lblCacheDays = new System.Windows.Forms.Label();
+            this.lblNoImageService = new System.Windows.Forms.Label();
+            this._NO_TRANSLATE_DaysToCacheImages = new System.Windows.Forms.NumericUpDown();
+            this.fixedWidthFontDialog = new System.Windows.Forms.FontDialog();
             this.applicationDialog = new System.Windows.Forms.FontDialog();
             this.commitFontDialog = new System.Windows.Forms.FontDialog();
-            this.groupBox13.SuspendLayout();
-            this.groupBox15.SuspendLayout();
-            this.groupBox14.SuspendLayout();
-            this.groupBox6.SuspendLayout();
+            tlpnlMain = new System.Windows.Forms.TableLayoutPanel();
+            tlpnlMain.SuspendLayout();
+            this.gbGeneral.SuspendLayout();
+            this.tlpnlGeneral.SuspendLayout();
+            this.gbLanguages.SuspendLayout();
+            this.tlpnlLanguage.SuspendLayout();
+            this.gbAuthorImages.SuspendLayout();
+            this.tlpnlAuthor.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._NO_TRANSLATE_DaysToCacheImages)).BeginInit();
             this.SuspendLayout();
             // 
-            // groupBox13
+            // tlpnlMain
             // 
-            this.groupBox13.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.groupBox13.Controls.Add(this.label49);
-            this.groupBox13.Controls.Add(this.label22);
-            this.groupBox13.Controls.Add(this.Dictionary);
-            this.groupBox13.Controls.Add(this.downloadDictionary);
-            this.groupBox13.Controls.Add(this.Language);
-            this.groupBox13.Controls.Add(this.helpTranslate);
-            this.groupBox13.Location = new System.Drawing.Point(3, 443);
-            this.groupBox13.Name = "groupBox13";
-            this.groupBox13.Size = new System.Drawing.Size(597, 84);
-            this.groupBox13.TabIndex = 60;
-            this.groupBox13.TabStop = false;
-            this.groupBox13.Text = "Language";
+            tlpnlMain.ColumnCount = 1;
+            tlpnlMain.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
+            tlpnlMain.Controls.Add(this.gbGeneral, 0, 0);
+            tlpnlMain.Controls.Add(this.gbLanguages, 0, 2);
+            tlpnlMain.Controls.Add(this.gbAuthorImages, 0, 1);
+            tlpnlMain.Dock = System.Windows.Forms.DockStyle.Fill;
+            tlpnlMain.Location = new System.Drawing.Point(8, 8);
+            tlpnlMain.Name = "tlpnlMain";
+            tlpnlMain.RowCount = 4;
+            tlpnlMain.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            tlpnlMain.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            tlpnlMain.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            tlpnlMain.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            tlpnlMain.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 10F));
+            tlpnlMain.Size = new System.Drawing.Size(757, 515);
+            tlpnlMain.TabIndex = 0;
             // 
-            // label49
+            // gbGeneral
             // 
-            this.label49.AutoSize = true;
-            this.label49.Location = new System.Drawing.Point(8, 21);
-            this.label49.Name = "label49";
-            this.label49.Size = new System.Drawing.Size(167, 16);
-            this.label49.TabIndex = 30;
-            this.label49.Text = "Language (restart required)";
+            this.gbGeneral.AutoSize = true;
+            this.gbGeneral.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.gbGeneral.Controls.Add(this.tlpnlGeneral);
+            this.gbGeneral.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.gbGeneral.Location = new System.Drawing.Point(3, 3);
+            this.gbGeneral.Name = "gbGeneral";
+            this.gbGeneral.Padding = new System.Windows.Forms.Padding(8);
+            this.gbGeneral.Size = new System.Drawing.Size(751, 153);
+            this.gbGeneral.TabIndex = 0;
+            this.gbGeneral.TabStop = false;
+            this.gbGeneral.Text = "General";
             // 
-            // label22
+            // tlpnlGeneral
             // 
-            this.label22.AutoSize = true;
-            this.label22.Location = new System.Drawing.Point(8, 50);
-            this.label22.Name = "label22";
-            this.label22.Size = new System.Drawing.Size(179, 16);
-            this.label22.TabIndex = 33;
-            this.label22.Text = "Dictionary for spelling checker";
-            // 
-            // Dictionary
-            // 
-            this.Dictionary.FormattingEnabled = true;
-            this.Dictionary.Location = new System.Drawing.Point(283, 47);
-            this.Dictionary.Name = "Dictionary";
-            this.Dictionary.Size = new System.Drawing.Size(169, 24);
-            this.Dictionary.TabIndex = 34;
-            this.Dictionary.DropDown += new System.EventHandler(this.Dictionary_DropDown);
-            // 
-            // downloadDictionary
-            // 
-            this.downloadDictionary.AutoSize = true;
-            this.downloadDictionary.Location = new System.Drawing.Point(458, 50);
-            this.downloadDictionary.Name = "downloadDictionary";
-            this.downloadDictionary.Size = new System.Drawing.Size(123, 16);
-            this.downloadDictionary.TabIndex = 35;
-            this.downloadDictionary.TabStop = true;
-            this.downloadDictionary.Text = "Download dictionary";
-            this.downloadDictionary.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.downloadDictionary_LinkClicked);
-            // 
-            // Language
-            // 
-            this.Language.FormattingEnabled = true;
-            this.Language.Items.AddRange(new object[] {});
-            this.Language.Location = new System.Drawing.Point(283, 18);
-            this.Language.Name = "Language";
-            this.Language.Size = new System.Drawing.Size(169, 24);
-            this.Language.TabIndex = 31;
-            // 
-            // helpTranslate
-            // 
-            this.helpTranslate.AutoSize = true;
-            this.helpTranslate.Location = new System.Drawing.Point(458, 21);
-            this.helpTranslate.Name = "helpTranslate";
-            this.helpTranslate.Size = new System.Drawing.Size(87, 16);
-            this.helpTranslate.TabIndex = 32;
-            this.helpTranslate.TabStop = true;
-            this.helpTranslate.Text = "Help translate";
-            this.helpTranslate.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.helpTranslate_LinkClicked);
-            // 
-            // groupBox15
-            // 
-            this.groupBox15.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.groupBox15.Controls.Add(this.commitFontChangeButton);
-            this.groupBox15.Controls.Add(this.label34);
-            this.groupBox15.Controls.Add(this.diffFontChangeButton);
-            this.groupBox15.Controls.Add(this.applicationFontChangeButton);
-            this.groupBox15.Controls.Add(this.label26);
-            this.groupBox15.Controls.Add(this.label56);
-            this.groupBox15.Location = new System.Drawing.Point(3, 322);
-            this.groupBox15.Name = "groupBox15";
-            this.groupBox15.Size = new System.Drawing.Size(594, 115);
-            this.groupBox15.TabIndex = 59;
-            this.groupBox15.TabStop = false;
-            this.groupBox15.Text = "Fonts";
-            // 
-            // commitFontChangeButton
-            // 
-            this.commitFontChangeButton.AutoSize = true;
-            this.commitFontChangeButton.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.commitFontChangeButton.Location = new System.Drawing.Point(221, 79);
-            this.commitFontChangeButton.Name = "commitFontChangeButton";
-            this.commitFontChangeButton.Size = new System.Drawing.Size(76, 26);
-            this.commitFontChangeButton.TabIndex = 25;
-            this.commitFontChangeButton.Text = "font name";
-            this.commitFontChangeButton.UseVisualStyleBackColor = true;
-            this.commitFontChangeButton.Click += new System.EventHandler(this.commitFontChangeButton_Click);
-            // 
-            // label34
-            // 
-            this.label34.AutoSize = true;
-            this.label34.Location = new System.Drawing.Point(10, 84);
-            this.label34.Name = "label34";
-            this.label34.Size = new System.Drawing.Size(78, 16);
-            this.label34.TabIndex = 24;
-            this.label34.Text = "Commit font";
-            // 
-            // diffFontChangeButton
-            // 
-            this.diffFontChangeButton.AutoSize = true;
-            this.diffFontChangeButton.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.diffFontChangeButton.Location = new System.Drawing.Point(221, 15);
-            this.diffFontChangeButton.Name = "diffFontChangeButton";
-            this.diffFontChangeButton.Size = new System.Drawing.Size(76, 26);
-            this.diffFontChangeButton.TabIndex = 21;
-            this.diffFontChangeButton.Text = "font name";
-            this.diffFontChangeButton.UseVisualStyleBackColor = true;
-            this.diffFontChangeButton.Click += new System.EventHandler(this.diffFontChangeButton_Click);
-            // 
-            // applicationFontChangeButton
-            // 
-            this.applicationFontChangeButton.AutoSize = true;
-            this.applicationFontChangeButton.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.applicationFontChangeButton.Location = new System.Drawing.Point(221, 47);
-            this.applicationFontChangeButton.Name = "applicationFontChangeButton";
-            this.applicationFontChangeButton.Size = new System.Drawing.Size(76, 26);
-            this.applicationFontChangeButton.TabIndex = 23;
-            this.applicationFontChangeButton.Text = "font name";
-            this.applicationFontChangeButton.UseVisualStyleBackColor = true;
-            this.applicationFontChangeButton.Click += new System.EventHandler(this.applicationFontChangeButton_Click);
-            // 
-            // label26
-            // 
-            this.label26.AutoSize = true;
-            this.label26.Location = new System.Drawing.Point(10, 52);
-            this.label26.Name = "label26";
-            this.label26.Size = new System.Drawing.Size(96, 16);
-            this.label26.TabIndex = 22;
-            this.label26.Text = "Application font";
-            // 
-            // label56
-            // 
-            this.label56.AutoSize = true;
-            this.label56.Location = new System.Drawing.Point(10, 22);
-            this.label56.Name = "label56";
-            this.label56.Size = new System.Drawing.Size(63, 16);
-            this.label56.TabIndex = 20;
-            this.label56.Text = "Code font";
-            // 
-            // groupBox14
-            // 
-            this.groupBox14.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.groupBox14.Controls.Add(this.chkShowRelativeDate);
-            this.groupBox14.Controls.Add(this.chkShowCurrentBranchInVisualStudio);
-            this.groupBox14.Controls.Add(this.chkEnableAutoScale);
-            this.groupBox14.Controls.Add(this.truncateLongFilenames);
-            this.groupBox14.Controls.Add(this.truncatePathMethod);
-            this.groupBox14.Location = new System.Drawing.Point(3, 3);
-            this.groupBox14.Name = "groupBox14";
-            this.groupBox14.Size = new System.Drawing.Size(594, 136);
-            this.groupBox14.TabIndex = 57;
-            this.groupBox14.TabStop = false;
-            this.groupBox14.Text = "General";
+            this.tlpnlGeneral.AutoSize = true;
+            this.tlpnlGeneral.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.tlpnlGeneral.ColumnCount = 3;
+            this.tlpnlGeneral.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
+            this.tlpnlGeneral.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
+            this.tlpnlGeneral.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tlpnlGeneral.Controls.Add(this.chkShowRelativeDate, 0, 0);
+            this.tlpnlGeneral.Controls.Add(this.truncatePathMethod, 1, 3);
+            this.tlpnlGeneral.Controls.Add(this.truncateLongFilenames, 0, 3);
+            this.tlpnlGeneral.Controls.Add(this.chkEnableAutoScale, 0, 2);
+            this.tlpnlGeneral.Controls.Add(this.chkShowCurrentBranchInVisualStudio, 0, 1);
+            this.tlpnlGeneral.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tlpnlGeneral.Location = new System.Drawing.Point(8, 22);
+            this.tlpnlGeneral.Name = "tlpnlGeneral";
+            this.tlpnlGeneral.RowCount = 4;
+            this.tlpnlGeneral.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tlpnlGeneral.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tlpnlGeneral.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tlpnlGeneral.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tlpnlGeneral.Size = new System.Drawing.Size(735, 123);
+            this.tlpnlGeneral.TabIndex = 0;
             // 
             // chkShowRelativeDate
             // 
             this.chkShowRelativeDate.AutoSize = true;
-            this.chkShowRelativeDate.Location = new System.Drawing.Point(10, 22);
+            this.tlpnlGeneral.SetColumnSpan(this.chkShowRelativeDate, 2);
+            this.chkShowRelativeDate.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.chkShowRelativeDate.Location = new System.Drawing.Point(3, 3);
             this.chkShowRelativeDate.Name = "chkShowRelativeDate";
-            this.chkShowRelativeDate.Size = new System.Drawing.Size(244, 20);
-            this.chkShowRelativeDate.TabIndex = 1;
+            this.chkShowRelativeDate.Size = new System.Drawing.Size(281, 17);
+            this.chkShowRelativeDate.TabIndex = 0;
             this.chkShowRelativeDate.Text = "Show relative date instead of full date";
             this.chkShowRelativeDate.UseVisualStyleBackColor = true;
             // 
-            // chkShowCurrentBranchInVisualStudio
-            // 
-            this.chkShowCurrentBranchInVisualStudio.AutoSize = true;
-            this.chkShowCurrentBranchInVisualStudio.Location = new System.Drawing.Point(10, 48);
-            this.chkShowCurrentBranchInVisualStudio.Name = "chkShowCurrentBranchInVisualStudio";
-            this.chkShowCurrentBranchInVisualStudio.Size = new System.Drawing.Size(239, 20);
-            this.chkShowCurrentBranchInVisualStudio.TabIndex = 2;
-            this.chkShowCurrentBranchInVisualStudio.Text = "Show current branch in Visual Studio";
-            this.chkShowCurrentBranchInVisualStudio.UseVisualStyleBackColor = true;
-            // 
-            // chkEnableAutoScale
-            // 
-            this.chkEnableAutoScale.AutoSize = true;
-            this.chkEnableAutoScale.Location = new System.Drawing.Point(10, 75);
-            this.chkEnableAutoScale.Margin = new System.Windows.Forms.Padding(4);
-            this.chkEnableAutoScale.Name = "chkEnableAutoScale";
-            this.chkEnableAutoScale.Size = new System.Drawing.Size(299, 20);
-            this.chkEnableAutoScale.TabIndex = 3;
-            this.chkEnableAutoScale.Text = "Auto scale user interface when high DPI is used";
-            this.chkEnableAutoScale.UseVisualStyleBackColor = true;
-            // 
             // truncatePathMethod
             // 
-            this.truncateLongFilenames.AutoSize = true;
-            this.truncateLongFilenames.Location = new System.Drawing.Point(10, 104);
-            this.truncateLongFilenames.Name = "truncateLongFilenames";
-            this.truncateLongFilenames.Size = new System.Drawing.Size(146, 16);
-            this.truncateLongFilenames.TabIndex = 5;
-            this.truncateLongFilenames.Text = "Truncate long filenames";
-            // 
-            // _NO_TRANSLATE_truncatePathMethod
-            // 
+            this.truncatePathMethod.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.truncatePathMethod.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.truncatePathMethod.FormattingEnabled = true;
             this.truncatePathMethod.Items.AddRange(new object[] {
             "None",
             "Compact",
             "Trim start",
             "Filename only"});
-            this.truncatePathMethod.Location = new System.Drawing.Point(221, 101);
+            this.truncatePathMethod.Location = new System.Drawing.Point(130, 99);
             this.truncatePathMethod.Name = "truncatePathMethod";
-            this.truncatePathMethod.Size = new System.Drawing.Size(242, 24);
-            this.truncatePathMethod.TabIndex = 6;
+            this.truncatePathMethod.Size = new System.Drawing.Size(154, 21);
+            this.truncatePathMethod.TabIndex = 4;
             // 
-            // groupBox6
+            // truncateLongFilenames
             // 
-            this.groupBox6.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.groupBox6.Controls.Add(this.AuthorImageSize);
-            this.groupBox6.Controls.Add(this.NoImageService);
-            this.groupBox6.Controls.Add(this.label53);
-            this.groupBox6.Controls.Add(this.label47);
-            this.groupBox6.Controls.Add(this._NO_TRANSLATE_DaysToCacheImages);
-            this.groupBox6.Controls.Add(this.label46);
-            this.groupBox6.Controls.Add(this.label44);
-            this.groupBox6.Controls.Add(this.ClearImageCache);
-            this.groupBox6.Controls.Add(this.ShowAuthorGravatar);
-            this.groupBox6.Location = new System.Drawing.Point(3, 145);
-            this.groupBox6.Name = "groupBox6";
-            this.groupBox6.Size = new System.Drawing.Size(594, 171);
-            this.groupBox6.TabIndex = 58;
-            this.groupBox6.TabStop = false;
-            this.groupBox6.Text = "Author images";
+            this.truncateLongFilenames.AutoSize = true;
+            this.truncateLongFilenames.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.truncateLongFilenames.Location = new System.Drawing.Point(3, 96);
+            this.truncateLongFilenames.Name = "truncateLongFilenames";
+            this.truncateLongFilenames.Size = new System.Drawing.Size(121, 27);
+            this.truncateLongFilenames.TabIndex = 3;
+            this.truncateLongFilenames.Text = "Truncate long filenames";
+            this.truncateLongFilenames.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
-            // AuthorImageSize
+            // chkEnableAutoScale
             // 
-            this.AuthorImageSize.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.AuthorImageSize.FormattingEnabled = true;
-            this.AuthorImageSize.Items.AddRange(new object[] {
-            "Small (80x80)",
-            "Normal (160x160)",
-            "Large (240x240)",
-            "Extra Large (320x320)"});
-            this.AuthorImageSize.Location = new System.Drawing.Point(221, 45);
-            this.AuthorImageSize.Margin = new System.Windows.Forms.Padding(2);
-            this.AuthorImageSize.Name = "AuthorImageSize";
-            this.AuthorImageSize.Size = new System.Drawing.Size(142, 24);
-            this.AuthorImageSize.TabIndex = 12;
+            this.chkEnableAutoScale.AutoSize = true;
+            this.tlpnlGeneral.SetColumnSpan(this.chkEnableAutoScale, 2);
+            this.chkEnableAutoScale.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.chkEnableAutoScale.Location = new System.Drawing.Point(3, 49);
+            this.chkEnableAutoScale.Name = "chkEnableAutoScale";
+            this.chkEnableAutoScale.Size = new System.Drawing.Size(281, 17);
+            this.chkEnableAutoScale.TabIndex = 2;
+            this.chkEnableAutoScale.Text = "Auto scale user interface when high DPI is used";
+            this.chkEnableAutoScale.UseVisualStyleBackColor = true;
+            // 
+            // chkShowCurrentBranchInVisualStudio
+            // 
+            this.chkShowCurrentBranchInVisualStudio.AutoSize = true;
+            this.tlpnlGeneral.SetColumnSpan(this.chkShowCurrentBranchInVisualStudio, 2);
+            this.chkShowCurrentBranchInVisualStudio.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.chkShowCurrentBranchInVisualStudio.Location = new System.Drawing.Point(3, 26);
+            this.chkShowCurrentBranchInVisualStudio.Name = "chkShowCurrentBranchInVisualStudio";
+            this.chkShowCurrentBranchInVisualStudio.Size = new System.Drawing.Size(281, 17);
+            this.chkShowCurrentBranchInVisualStudio.TabIndex = 1;
+            this.chkShowCurrentBranchInVisualStudio.Text = "Show current branch in Visual Studio";
+            this.chkShowCurrentBranchInVisualStudio.UseVisualStyleBackColor = true;
+            // 
+            // gbLanguages
+            // 
+            this.gbLanguages.AutoSize = true;
+            this.gbLanguages.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.gbLanguages.Controls.Add(this.tlpnlLanguage);
+            this.gbLanguages.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.gbLanguages.Location = new System.Drawing.Point(3, 304);
+            this.gbLanguages.Name = "gbLanguages";
+            this.gbLanguages.Padding = new System.Windows.Forms.Padding(8);
+            this.gbLanguages.Size = new System.Drawing.Size(751, 84);
+            this.gbLanguages.TabIndex = 2;
+            this.gbLanguages.TabStop = false;
+            this.gbLanguages.Text = "Language";
+            // 
+            // tlpnlLanguage
+            // 
+            this.tlpnlLanguage.AutoSize = true;
+            this.tlpnlLanguage.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.tlpnlLanguage.ColumnCount = 4;
+            this.tlpnlLanguage.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
+            this.tlpnlLanguage.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
+            this.tlpnlLanguage.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
+            this.tlpnlLanguage.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tlpnlLanguage.Controls.Add(this.Dictionary, 1, 1);
+            this.tlpnlLanguage.Controls.Add(this.downloadDictionary, 2, 1);
+            this.tlpnlLanguage.Controls.Add(this.lblSpellingDictionary, 0, 1);
+            this.tlpnlLanguage.Controls.Add(this.lblLanguage, 0, 0);
+            this.tlpnlLanguage.Controls.Add(this.Language, 1, 0);
+            this.tlpnlLanguage.Controls.Add(this.helpTranslate, 2, 0);
+            this.tlpnlLanguage.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tlpnlLanguage.Location = new System.Drawing.Point(8, 22);
+            this.tlpnlLanguage.Name = "tlpnlLanguage";
+            this.tlpnlLanguage.RowCount = 2;
+            this.tlpnlLanguage.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tlpnlLanguage.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tlpnlLanguage.Size = new System.Drawing.Size(735, 54);
+            this.tlpnlLanguage.TabIndex = 0;
+            // 
+            // Dictionary
+            // 
+            this.Dictionary.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.Dictionary.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.Dictionary.FormattingEnabled = true;
+            this.Dictionary.Location = new System.Drawing.Point(159, 30);
+            this.Dictionary.Name = "Dictionary";
+            this.Dictionary.Size = new System.Drawing.Size(86, 21);
+            this.Dictionary.TabIndex = 4;
+            this.Dictionary.DropDown += new System.EventHandler(this.Dictionary_DropDown);
+            // 
+            // downloadDictionary
+            // 
+            this.downloadDictionary.AutoSize = true;
+            this.downloadDictionary.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.downloadDictionary.LinkColor = System.Drawing.SystemColors.HotTrack;
+            this.downloadDictionary.Location = new System.Drawing.Point(251, 27);
+            this.downloadDictionary.Name = "downloadDictionary";
+            this.downloadDictionary.Size = new System.Drawing.Size(104, 27);
+            this.downloadDictionary.TabIndex = 5;
+            this.downloadDictionary.TabStop = true;
+            this.downloadDictionary.Text = "Download dictionary";
+            this.downloadDictionary.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.downloadDictionary.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.downloadDictionary_LinkClicked);
+            // 
+            // lblSpellingDictionary
+            // 
+            this.lblSpellingDictionary.AutoSize = true;
+            this.lblSpellingDictionary.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.lblSpellingDictionary.Location = new System.Drawing.Point(3, 27);
+            this.lblSpellingDictionary.Name = "lblSpellingDictionary";
+            this.lblSpellingDictionary.Size = new System.Drawing.Size(150, 27);
+            this.lblSpellingDictionary.TabIndex = 3;
+            this.lblSpellingDictionary.Text = "Dictionary for spelling checker";
+            this.lblSpellingDictionary.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // lblLanguage
+            // 
+            this.lblLanguage.AutoSize = true;
+            this.lblLanguage.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.lblLanguage.Location = new System.Drawing.Point(3, 0);
+            this.lblLanguage.Name = "lblLanguage";
+            this.lblLanguage.Size = new System.Drawing.Size(150, 27);
+            this.lblLanguage.TabIndex = 0;
+            this.lblLanguage.Text = "Language (restart required)";
+            this.lblLanguage.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // Language
+            // 
+            this.Language.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.Language.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.Language.FormattingEnabled = true;
+            this.Language.Location = new System.Drawing.Point(159, 3);
+            this.Language.Name = "Language";
+            this.Language.Size = new System.Drawing.Size(86, 21);
+            this.Language.TabIndex = 1;
+            // 
+            // helpTranslate
+            // 
+            this.helpTranslate.AutoSize = true;
+            this.helpTranslate.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.helpTranslate.LinkColor = System.Drawing.SystemColors.HotTrack;
+            this.helpTranslate.Location = new System.Drawing.Point(251, 0);
+            this.helpTranslate.Name = "helpTranslate";
+            this.helpTranslate.Size = new System.Drawing.Size(104, 27);
+            this.helpTranslate.TabIndex = 2;
+            this.helpTranslate.TabStop = true;
+            this.helpTranslate.Text = "Help translate";
+            this.helpTranslate.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.helpTranslate.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.helpTranslate_LinkClicked);
+            // 
+            // gbAuthorImages
+            // 
+            this.gbAuthorImages.AutoSize = true;
+            this.gbAuthorImages.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.gbAuthorImages.Controls.Add(this.tlpnlAuthor);
+            this.gbAuthorImages.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.gbAuthorImages.Location = new System.Drawing.Point(3, 162);
+            this.gbAuthorImages.Name = "gbAuthorImages";
+            this.gbAuthorImages.Padding = new System.Windows.Forms.Padding(8);
+            this.gbAuthorImages.Size = new System.Drawing.Size(751, 136);
+            this.gbAuthorImages.TabIndex = 1;
+            this.gbAuthorImages.TabStop = false;
+            this.gbAuthorImages.Text = "Author images";
+            // 
+            // tlpnlAuthor
+            // 
+            this.tlpnlAuthor.AutoSize = true;
+            this.tlpnlAuthor.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.tlpnlAuthor.ColumnCount = 3;
+            this.tlpnlAuthor.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
+            this.tlpnlAuthor.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
+            this.tlpnlAuthor.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tlpnlAuthor.Controls.Add(this.ShowAuthorAvatar, 0, 0);
+            this.tlpnlAuthor.Controls.Add(this.ClearImageCache, 1, 3);
+            this.tlpnlAuthor.Controls.Add(this.NoImageService, 1, 2);
+            this.tlpnlAuthor.Controls.Add(this.lblCacheDays, 0, 1);
+            this.tlpnlAuthor.Controls.Add(this.lblNoImageService, 0, 2);
+            this.tlpnlAuthor.Controls.Add(this._NO_TRANSLATE_DaysToCacheImages, 1, 1);
+            this.tlpnlAuthor.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tlpnlAuthor.Location = new System.Drawing.Point(8, 22);
+            this.tlpnlAuthor.Name = "tlpnlAuthor";
+            this.tlpnlAuthor.RowCount = 4;
+            this.tlpnlAuthor.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tlpnlAuthor.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tlpnlAuthor.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tlpnlAuthor.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tlpnlAuthor.Size = new System.Drawing.Size(735, 106);
+            this.tlpnlAuthor.TabIndex = 0;
+            // 
+            // ShowAuthorAvatar
+            // 
+            this.ShowAuthorAvatar.AutoSize = true;
+            this.tlpnlAuthor.SetColumnSpan(this.ShowAuthorAvatar, 2);
+            this.ShowAuthorAvatar.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.ShowAuthorAvatar.Location = new System.Drawing.Point(3, 3);
+            this.ShowAuthorAvatar.Name = "ShowAuthorAvatar";
+            this.ShowAuthorAvatar.Size = new System.Drawing.Size(217, 17);
+            this.ShowAuthorAvatar.TabIndex = 0;
+            this.ShowAuthorAvatar.Text = "Show author's avatar in the commit info view";
+            this.ShowAuthorAvatar.UseVisualStyleBackColor = true;
+            // 
+            // ClearImageCache
+            // 
+            this.ClearImageCache.AutoSize = true;
+            this.ClearImageCache.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.ClearImageCache.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.ClearImageCache.Location = new System.Drawing.Point(116, 80);
+            this.ClearImageCache.Name = "ClearImageCache";
+            this.ClearImageCache.Size = new System.Drawing.Size(104, 23);
+            this.ClearImageCache.TabIndex = 5;
+            this.ClearImageCache.Text = "Clear image cache";
+            this.ClearImageCache.UseVisualStyleBackColor = true;
+            this.ClearImageCache.Click += new System.EventHandler(this.ClearImageCache_Click);
             // 
             // NoImageService
             // 
+            this.NoImageService.Dock = System.Windows.Forms.DockStyle.Fill;
             this.NoImageService.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.NoImageService.FormattingEnabled = true;
-            this.NoImageService.Location = new System.Drawing.Point(221, 100);
+            this.NoImageService.Location = new System.Drawing.Point(116, 53);
             this.NoImageService.Name = "NoImageService";
-            this.NoImageService.Size = new System.Drawing.Size(142, 24);
-            this.NoImageService.TabIndex = 17;
+            this.NoImageService.Size = new System.Drawing.Size(104, 21);
+            this.NoImageService.TabIndex = 4;
             // 
-            // label53
+            // lblCacheDays
             // 
-            this.label53.AutoSize = true;
-            this.label53.Location = new System.Drawing.Point(10, 103);
-            this.label53.Name = "label53";
-            this.label53.Size = new System.Drawing.Size(106, 16);
-            this.label53.TabIndex = 16;
-            this.label53.Text = "No image service";
+            this.lblCacheDays.AutoSize = true;
+            this.lblCacheDays.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.lblCacheDays.Location = new System.Drawing.Point(3, 23);
+            this.lblCacheDays.Name = "lblCacheDays";
+            this.lblCacheDays.Size = new System.Drawing.Size(107, 27);
+            this.lblCacheDays.TabIndex = 1;
+            this.lblCacheDays.Text = "Cache images (days)";
+            this.lblCacheDays.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
-            // label47
+            // lblNoImageService
             // 
-            this.label47.AutoSize = true;
-            this.label47.Location = new System.Drawing.Point(304, 74);
-            this.label47.Name = "label47";
-            this.label47.Size = new System.Drawing.Size(34, 16);
-            this.label47.TabIndex = 15;
-            this.label47.Text = "days";
+            this.lblNoImageService.AutoSize = true;
+            this.lblNoImageService.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.lblNoImageService.Location = new System.Drawing.Point(3, 50);
+            this.lblNoImageService.Name = "lblNoImageService";
+            this.lblNoImageService.Size = new System.Drawing.Size(107, 27);
+            this.lblNoImageService.TabIndex = 3;
+            this.lblNoImageService.Text = "No image service";
+            this.lblNoImageService.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // _NO_TRANSLATE_DaysToCacheImages
             // 
-            this._NO_TRANSLATE_DaysToCacheImages.Location = new System.Drawing.Point(221, 73);
+            this._NO_TRANSLATE_DaysToCacheImages.Location = new System.Drawing.Point(116, 26);
             this._NO_TRANSLATE_DaysToCacheImages.Maximum = new decimal(new int[] {
             400,
             0,
             0,
             0});
             this._NO_TRANSLATE_DaysToCacheImages.Name = "_NO_TRANSLATE_DaysToCacheImages";
-            this._NO_TRANSLATE_DaysToCacheImages.Size = new System.Drawing.Size(77, 23);
-            this._NO_TRANSLATE_DaysToCacheImages.TabIndex = 14;
+            this._NO_TRANSLATE_DaysToCacheImages.Size = new System.Drawing.Size(38, 21);
+            this._NO_TRANSLATE_DaysToCacheImages.TabIndex = 2;
+            this._NO_TRANSLATE_DaysToCacheImages.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
             // 
-            // label46
+            // fixedWidthFontDialog
             // 
-            this.label46.AutoSize = true;
-            this.label46.Location = new System.Drawing.Point(10, 75);
-            this.label46.Name = "label46";
-            this.label46.Size = new System.Drawing.Size(88, 16);
-            this.label46.TabIndex = 13;
-            this.label46.Text = "Cache images";
-            // 
-            // label44
-            // 
-            this.label44.AutoSize = true;
-            this.label44.Location = new System.Drawing.Point(10, 48);
-            this.label44.Name = "label44";
-            this.label44.Size = new System.Drawing.Size(70, 16);
-            this.label44.TabIndex = 11;
-            this.label44.Text = "Image size";
-            // 
-            // ClearImageCache
-            // 
-            this.ClearImageCache.Location = new System.Drawing.Point(10, 131);
-            this.ClearImageCache.Name = "ClearImageCache";
-            this.ClearImageCache.Size = new System.Drawing.Size(142, 25);
-            this.ClearImageCache.TabIndex = 18;
-            this.ClearImageCache.Text = "Clear image cache";
-            this.ClearImageCache.UseVisualStyleBackColor = true;
-            this.ClearImageCache.Click += new System.EventHandler(this.ClearImageCache_Click);
-            // 
-            // ShowAuthorGravatar
-            // 
-            this.ShowAuthorGravatar.AutoSize = true;
-            this.ShowAuthorGravatar.Location = new System.Drawing.Point(10, 22);
-            this.ShowAuthorGravatar.Name = "ShowAuthorGravatar";
-            this.ShowAuthorGravatar.Size = new System.Drawing.Size(237, 20);
-            this.ShowAuthorGravatar.TabIndex = 10;
-            this.ShowAuthorGravatar.Text = "Get author image from gravatar.com";
-            this.ShowAuthorGravatar.UseVisualStyleBackColor = true;
-            // 
-            // diffFontDialog
-            // 
-            this.diffFontDialog.AllowVerticalFonts = false;
-            this.diffFontDialog.Color = System.Drawing.SystemColors.ControlText;
-            this.diffFontDialog.FixedPitchOnly = true;
+            this.fixedWidthFontDialog.AllowVerticalFonts = false;
+            this.fixedWidthFontDialog.Color = System.Drawing.SystemColors.ControlText;
+            this.fixedWidthFontDialog.FixedPitchOnly = true;
             // 
             // applicationDialog
             // 
@@ -424,21 +423,26 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-            this.Controls.Add(this.groupBox13);
-            this.Controls.Add(this.groupBox15);
-            this.Controls.Add(this.groupBox14);
-            this.Controls.Add(this.groupBox6);
-            this.MinimumSize = new System.Drawing.Size(515, 510);
+            this.Controls.Add(tlpnlMain);
+            this.MinimumSize = new System.Drawing.Size(258, 255);
             this.Name = "AppearanceSettingsPage";
-            this.Size = new System.Drawing.Size(600, 527);
-            this.groupBox13.ResumeLayout(false);
-            this.groupBox13.PerformLayout();
-            this.groupBox15.ResumeLayout(false);
-            this.groupBox15.PerformLayout();
-            this.groupBox14.ResumeLayout(false);
-            this.groupBox14.PerformLayout();
-            this.groupBox6.ResumeLayout(false);
-            this.groupBox6.PerformLayout();
+            this.Padding = new System.Windows.Forms.Padding(8);
+            this.Size = new System.Drawing.Size(773, 531);
+            this.Text = "Appearance";
+            tlpnlMain.ResumeLayout(false);
+            tlpnlMain.PerformLayout();
+            this.gbGeneral.ResumeLayout(false);
+            this.gbGeneral.PerformLayout();
+            this.tlpnlGeneral.ResumeLayout(false);
+            this.tlpnlGeneral.PerformLayout();
+            this.gbLanguages.ResumeLayout(false);
+            this.gbLanguages.PerformLayout();
+            this.tlpnlLanguage.ResumeLayout(false);
+            this.tlpnlLanguage.PerformLayout();
+            this.gbAuthorImages.ResumeLayout(false);
+            this.gbAuthorImages.PerformLayout();
+            this.tlpnlAuthor.ResumeLayout(false);
+            this.tlpnlAuthor.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this._NO_TRANSLATE_DaysToCacheImages)).EndInit();
             this.ResumeLayout(false);
 
@@ -446,38 +450,31 @@
 
         #endregion
 
-        private System.Windows.Forms.GroupBox groupBox13;
-        private System.Windows.Forms.Label label49;
-        private System.Windows.Forms.Label label22;
+        private System.Windows.Forms.GroupBox gbLanguages;
+        private System.Windows.Forms.Label lblLanguage;
+        private System.Windows.Forms.Label lblSpellingDictionary;
         private System.Windows.Forms.ComboBox Dictionary;
         private System.Windows.Forms.LinkLabel downloadDictionary;
         private System.Windows.Forms.ComboBox Language;
         private System.Windows.Forms.LinkLabel helpTranslate;
-        private System.Windows.Forms.GroupBox groupBox15;
-        private System.Windows.Forms.Button diffFontChangeButton;
-        private System.Windows.Forms.Button applicationFontChangeButton;
-        private System.Windows.Forms.Label label26;
-        private System.Windows.Forms.Label label56;
-        private System.Windows.Forms.GroupBox groupBox14;
+        private System.Windows.Forms.GroupBox gbGeneral;
         private System.Windows.Forms.CheckBox chkShowRelativeDate;
         private System.Windows.Forms.CheckBox chkShowCurrentBranchInVisualStudio;
         private System.Windows.Forms.CheckBox chkEnableAutoScale;
         private System.Windows.Forms.Label truncateLongFilenames;
         private System.Windows.Forms.ComboBox truncatePathMethod;
-        private System.Windows.Forms.GroupBox groupBox6;
+        private System.Windows.Forms.GroupBox gbAuthorImages;
         private System.Windows.Forms.ComboBox NoImageService;
-        private System.Windows.Forms.Label label53;
-        private System.Windows.Forms.Label label47;
+        private System.Windows.Forms.Label lblNoImageService;
         private System.Windows.Forms.NumericUpDown _NO_TRANSLATE_DaysToCacheImages;
-        private System.Windows.Forms.Label label46;
-        private System.Windows.Forms.Label label44;
+        private System.Windows.Forms.Label lblCacheDays;
         private System.Windows.Forms.Button ClearImageCache;
-        private System.Windows.Forms.CheckBox ShowAuthorGravatar;
-        private System.Windows.Forms.FontDialog diffFontDialog;
+        private System.Windows.Forms.CheckBox ShowAuthorAvatar;
+        private System.Windows.Forms.FontDialog fixedWidthFontDialog;
         private System.Windows.Forms.FontDialog applicationDialog;
-        private System.Windows.Forms.Button commitFontChangeButton;
-        private System.Windows.Forms.Label label34;
         private System.Windows.Forms.FontDialog commitFontDialog;
-        private System.Windows.Forms.ComboBox AuthorImageSize;
+        private System.Windows.Forms.TableLayoutPanel tlpnlLanguage;
+        private System.Windows.Forms.TableLayoutPanel tlpnlGeneral;
+        private System.Windows.Forms.TableLayoutPanel tlpnlAuthor;
     }
 }

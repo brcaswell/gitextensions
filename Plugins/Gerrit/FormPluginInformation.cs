@@ -1,7 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Windows.Forms;
 using GitUI;
-using ResourceManager;
 
 namespace Gerrit
 {
@@ -10,7 +9,7 @@ namespace Gerrit
         public FormPluginInformation()
         {
             InitializeComponent();
-            Translate();
+            InitializeComplete();
         }
 
         public static void ShowSubmitted(IWin32Window owner, string change)
@@ -25,7 +24,7 @@ namespace Gerrit
 
         private void _NO_TRANSLATE_TargetLabel_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
-            Process.Start(@"http://github.com/openstack-infra/git-review#git-review");
+            Process.Start(@"https://github.com/openstack-infra/git-review#git-review");
         }
     }
 }

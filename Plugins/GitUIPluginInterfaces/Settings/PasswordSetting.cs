@@ -4,70 +4,69 @@ namespace GitUIPluginInterfaces
 {
     public class PasswordSetting : ISetting
     {
-        public PasswordSetting(string aName, string aDefaultValue)
-            : this(aName, aName, aDefaultValue)
+        public PasswordSetting(string name, string defaultValue)
+            : this(name, name, defaultValue)
         {
         }
 
-        public PasswordSetting(string aName, string aCaption, string aDefaultValue)
+        public PasswordSetting(string name, string caption, string defaultValue)
         {
-            Name = aName;
-            Caption = aCaption;
-            DefaultValue = aDefaultValue;
+            Name = name;
+            Caption = caption;
+            DefaultValue = defaultValue;
         }
 
-        public string Name { get; private set; }
-        public string Caption { get; private set; }
+        public string Name { get; }
+        public string Caption { get; }
         public string DefaultValue { get; set; }
+        public TextBox CustomControl { get; set; }
 
         public ISettingControlBinding CreateControlBinding()
         {
-            return new TextBoxBinding(this);
-    }
+            return new TextBoxBinding(this, CustomControl);
+        }
 
         private class TextBoxBinding : SettingControlBinding<PasswordSetting, TextBox>
         {
-            public TextBoxBinding(PasswordSetting aSetting)
-                : base(aSetting)
-            { }
+            public TextBoxBinding(PasswordSetting setting, TextBox customControl)
+                : base(setting, customControl)
+            {
+            }
 
             public override TextBox CreateControl()
             {
-                return new TextBox {PasswordChar = '\u25CF'};
+                return new TextBox { PasswordChar = '\u25CF' };
             }
 
             public override void LoadSetting(ISettingsSource settings, bool areSettingsEffective, TextBox control)
             {
-                string settingVal;
-                if (areSettingsEffective)
-                {
-                    settingVal = Setting.ValueOrDefault(settings);
-                }
-                else
-                {
-                    settingVal = Setting[settings];
-                }
+                string settingVal = areSettingsEffective
+                    ? Setting.ValueOrDefault(settings)
+                    : Setting[settings];
 
                 control.Text = settingVal;
             }
 
-            public override void SaveSetting(ISettingsSource settings, TextBox control)
+            public override void SaveSetting(ISettingsSource settings, bool areSettingsEffective, TextBox control)
             {
-                Setting[settings] = control.Text;
+                var controlValue = control.Text;
+                if (areSettingsEffective)
+                {
+                    if (Setting.ValueOrDefault(settings) == controlValue)
+                    {
+                        return;
+                    }
+                }
+
+                Setting[settings] = controlValue;
             }
         }
 
         public string this[ISettingsSource settings]
         {
-            get
-            {
-                return settings.GetString(Name, null);
-            }
+            get => settings.GetString(Name, null);
 
-            set
-            {
-                settings.SetString(Name, value);
-            }
+            set => settings.SetString(Name, value);
         }
 
         public string ValueOrDefault(ISettingsSource settings)
